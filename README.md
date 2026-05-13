@@ -137,3 +137,20 @@ Short answer: **yes, it will update when you deploy new code**, with PWA rules:
 - Existing offline data in IndexedDB remains on device across app updates.
 - If you ship IndexedDB schema changes, bump Dexie DB version and include migration logic.
 - If API contracts change, maintain backward compatibility for at least one app version to avoid sync failures during rollout.
+## Vercel Deployment Fix ("Cannot GET /")
+
+If Vercel shows **Cannot GET /**, it is usually deploying the Node API entrypoint instead of the built SPA assets.
+
+This repo now includes `vercel.json` to force Vercel to:
+- build the **web** workspace,
+- publish `web/dist`, and
+- rewrite all SPA routes to `index.html`.
+
+### Steps in Vercel Project Settings
+1. Framework Preset: **Other**
+2. Root Directory: repository root (default)
+3. Build Command: auto from `vercel.json`
+4. Output Directory: auto from `vercel.json`
+5. Redeploy after pushing changes.
+
+For backend APIs, deploy `server`/`api` separately (e.g., Railway/Render/Fly) and point `VITE_API_BASE_URL` to that API URL.
