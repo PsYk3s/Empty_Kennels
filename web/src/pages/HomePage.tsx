@@ -11,18 +11,14 @@ export function HomePage() {
 
 	return (
 		<section className='screen intro-screen'>
-			<h2>Ready to capture leads</h2>
-			<p>
-				Use the form to capture visitor details in seconds. Entries save instantly,
-				even when offline.
-			</p>
+			<h2>Capture Leads</h2>
 
 			<Link to='/lead' className='cta-button'>
 				Start New Lead
 			</Link>
 
 			<p className='supporting-text'>
-				{pending} lead{pending === 1 ? '' : 's'} waiting to sync.
+				{pending} lead{pending === 1 ? '' : 's'} to sync
 			</p>
 		</section>
 	);

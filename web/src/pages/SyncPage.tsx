@@ -26,7 +26,6 @@ export function SyncPage() {
     <section className='screen'>
       <div className='screen-head'>
         <h2>Sync Queue</h2>
-        <p>{leads.length} lead{leads.length === 1 ? '' : 's'} ready to sync</p>
       </div>
 
       {leads.length > 0 ? (

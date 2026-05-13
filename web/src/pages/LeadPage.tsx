@@ -92,7 +92,7 @@ export function LeadPage() {
 		<section className='screen'>
 			<div className='screen-head'>
 				<h2>New Lead</h2>
-				<p>Simple form for fast walk-up capture.</p>
+
 			</div>
 
 			<div className='capture-grid'>
