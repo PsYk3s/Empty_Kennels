@@ -16,6 +16,16 @@ export const db = {
       writeLeads(leads);
     },
     async bulkPut(items: any[]) { for (const i of items) await this.put(i); },
+    async allList(limit = 100) {
+      return readLeads()
+        .slice()
+        .sort((a: any, b: any) => {
+          const at = new Date(a.updatedAt || a.createdAt || 0).getTime();
+          const bt = new Date(b.updatedAt || b.createdAt || 0).getTime();
+          return bt - at;
+        })
+        .slice(0, limit);
+    },
     async pendingList(limit = 25) { return readLeads().filter((l: any) => ['pending', 'failed'].includes(l.syncStatus)).slice(0, limit); },
     async syncingList() { return readLeads().filter((l: any) => l.syncStatus === 'syncing'); },
     async pendingCount() { return readLeads().filter((l: any) => l.syncStatus !== 'synced').length; }

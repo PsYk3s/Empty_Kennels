@@ -1,8 +1,9 @@
 import { Router } from 'express';
-import { batchCreateLeads } from '../controllers/leadsController.js';
+import { batchCreateLeads, emailLeadListToAdmin } from '../controllers/leadsController.js';
 import { pool } from '../database/db.js';
 const router = Router();
 router.post('/leads/batch', batchCreateLeads);
+router.post('/leads/email-admin-list', emailLeadListToAdmin);
 router.get('/catalogues', async (req,res)=>{ const r=await pool.query('SELECT * FROM catalogues WHERE is_active=true'); res.json(r.rows);});
 router.get('/suppliers', async (req,res)=>{ const r=await pool.query('SELECT * FROM suppliers WHERE is_active=true'); res.json(r.rows);});
 router.get('/sync/status', async (req,res)=>{ const r=await pool.query("SELECT COUNT(*) FILTER (WHERE sync_status!='synced') AS pending, MAX(updated_at) AS last_sync FROM leads"); res.json(r.rows[0]);});

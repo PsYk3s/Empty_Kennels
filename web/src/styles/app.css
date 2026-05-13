@@ -254,6 +254,7 @@ textarea {
 .actions-row {
 	margin-top: 1rem;
 	display: flex;
+	gap: 0.6rem;
 	justify-content: flex-end;
 }
 
@@ -271,6 +272,30 @@ textarea {
 	text-decoration: none;
 	transition: all 0.3s ease;
 	cursor: pointer;
+}
+
+.secondary-button {
+	border: 1px solid var(--border-dark);
+	border-radius: 12px;
+	background: transparent;
+	color: var(--light-text);
+	font-size: 0.95rem;
+	font-weight: 600;
+	padding: 0.9rem 1rem;
+	min-width: 190px;
+	transition: all 0.25s ease;
+	cursor: pointer;
+}
+
+.secondary-button:hover:not(:disabled) {
+	border-color: var(--accent-green);
+	color: var(--accent-green);
+	transform: translateY(-2px);
+}
+
+.secondary-button:disabled {
+	opacity: 0.65;
+	cursor: not-allowed;
 }
 
 .primary-button:hover:not(:disabled),
@@ -328,11 +353,68 @@ textarea {
 	box-shadow: 0 4px 12px rgba(77, 184, 92, 0.2);
 }
 
+.queue-item.compact {
+	padding: 0.5rem 0.65rem;
+}
+
 .queue-item-header {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
 	margin-bottom: 0.35rem;
+	gap: 0.5rem;
+}
+
+.queue-item-header strong {
+	font-size: 0.93rem;
+	line-height: 1.15;
+}
+
+.status-icons {
+	display: flex;
+	gap: 0.35rem;
+	align-items: center;
+	flex-wrap: wrap;
+}
+
+.status-icon {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.2rem;
+	font-size: 0.72rem;
+	line-height: 1;
+	padding: 0.25rem 0.35rem;
+	border-radius: 999px;
+	border: 1px solid var(--border-dark);
+	background: rgba(255, 255, 255, 0.02);
+	min-width: 46px;
+	justify-content: center;
+}
+
+.status-icon.sent,
+.status-icon.synced {
+	border-color: rgba(95, 208, 115, 0.55);
+	color: var(--accent-green);
+	background: rgba(95, 208, 115, 0.12);
+}
+
+.status-icon.pending,
+.status-icon.syncing {
+	border-color: rgba(255, 193, 7, 0.6);
+	color: #ffc107;
+	background: rgba(255, 193, 7, 0.12);
+}
+
+.status-icon.failed {
+	border-color: rgba(255, 87, 87, 0.55);
+	color: #ff5757;
+	background: rgba(255, 87, 87, 0.12);
+}
+
+.status-icon.disabled {
+	border-color: rgba(171, 181, 183, 0.5);
+	color: #abb5b7;
+	background: rgba(171, 181, 183, 0.08);
 }
 
 .sync-badge {
@@ -367,8 +449,8 @@ textarea {
 }
 
 .queue-item-meta {
-	font-size: 0.9rem;
-	color: #666;
+	font-size: 0.82rem;
+	color: var(--light-text);
 	margin: 0;
 }
 
