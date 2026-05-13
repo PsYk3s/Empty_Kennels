@@ -1,2 +1,29 @@
-import { useEffect, useState } from 'react'; import { db } from '../storage/db'; import { startSyncLoop } from '../sync/syncManager';
-export function HomePage(){ const [pending,setPending]=useState(0); useEffect(()=>{startSyncLoop(); db.leads.pendingCount().then(setPending);},[]); return <section><h1>PB App Dashboard</h1><p>Pending Leads: {pending}</p><p>Network: {navigator.onLine?'Online':'Offline'}</p></section>; }
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { db } from '../storage/db';
+
+export function HomePage() {
+	const [pending, setPending] = useState(0);
+
+	useEffect(() => {
+		db.leads.pendingCount().then(setPending);
+	}, []);
+
+	return (
+		<section className='screen intro-screen'>
+			<h2>Ready to capture leads</h2>
+			<p>
+				Use the form to capture visitor details in seconds. Entries save instantly,
+				even when offline.
+			</p>
+
+			<Link to='/lead' className='cta-button'>
+				Start New Lead
+			</Link>
+
+			<p className='supporting-text'>
+				{pending} lead{pending === 1 ? '' : 's'} waiting to sync.
+			</p>
+		</section>
+	);
+}
