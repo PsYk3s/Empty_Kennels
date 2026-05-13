@@ -1,0 +1,14 @@
+import express from 'express';
+import cors from 'cors';
+import rateLimit from 'express-rate-limit';
+import dotenv from 'dotenv';
+import router from './routes/index.js';
+import { errorHandler } from './middleware/errorHandler.js';
+dotenv.config();
+const app = express();
+app.use(cors({ origin: process.env.CORS_ORIGIN?.split(',') || '*' }));
+app.use(express.json({ limit: '1mb' }));
+app.use(rateLimit({ windowMs: 60000, max: 120 }));
+app.use('/api', router);
+app.use(errorHandler);
+app.listen(process.env.PORT || 4000, () => console.log('Server running'));

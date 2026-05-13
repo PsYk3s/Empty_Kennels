@@ -1,0 +1,2 @@
+import { useEffect, useState } from 'react'; import { db } from '../storage/db'; import { startSyncLoop } from '../sync/syncManager';
+export function HomePage(){ const [pending,setPending]=useState(0); useEffect(()=>{startSyncLoop(); db.leads.where('syncStatus').notEqual('synced').count().then(setPending);},[]); return <section><h1>PB App Dashboard</h1><p>Pending Leads: {pending}</p><p>Network: {navigator.onLine?'Online':'Offline'}</p></section>; }

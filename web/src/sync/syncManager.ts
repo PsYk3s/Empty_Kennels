@@ -1,0 +1,4 @@
+import { db } from '../storage/db'; import { api } from '../api/client';
+let running=false;
+export async function syncNow(){ if(running||!navigator.onLine) return; running=true; try{ const leads = await db.leads.where('syncStatus').anyOf('pending','failed').limit(25).toArray(); if(!leads.length)return; await db.leads.bulkPut(leads.map(l=>({...l,syncStatus:'syncing'}))); const resp=await api.post('/leads/batch',{leads}); const ids=new Set(resp.synced?.map((s:any)=>s.uuid)); await db.leads.bulkPut(leads.map(l=>({...l,syncStatus:ids.has(l.uuid)?'synced':'failed',lastSyncedAt:new Date().toISOString()}))); } catch { const queued=await db.leads.where('syncStatus').equals('syncing').toArray(); await db.leads.bulkPut(queued.map((l:any)=>({...l,syncStatus:'failed'}))); } finally{ running=false; }}
+export function startSyncLoop(){ syncNow(); window.addEventListener('online',syncNow); setInterval(syncNow,600000); }

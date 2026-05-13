@@ -1,21 +1,7 @@
-import { Link, Route, Routes } from "react-router-dom";
-import Home from "./pages/Home";
-import Staff from "./pages/Staff";
-import QrScan from "./pages/QrScan";
-
-export default function App() {
-  return (
-    <div style={{ fontFamily: "system-ui" }}>
-      <nav style={{ padding: 12, borderBottom: "1px solid #eee", display: "flex", gap: 12 }}>
-        <Link to="/">Home</Link>
-        <Link to="/staff">Staff</Link>
-      </nav>
-
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/staff" element={<Staff />} />
-        <Route path="/q/:token" element={<QrScan />} />
-      </Routes>
-    </div>
-  );
-}
+import { NavLink, Route, Routes } from 'react-router-dom';
+import { HomePage } from './pages/HomePage';
+import { LeadPage } from './pages/LeadPage';
+import { CataloguesPage } from './pages/CataloguesPage';
+import { SyncPage } from './pages/SyncPage';
+import { SettingsPage } from './pages/SettingsPage';
+export default function App(){return <div className='layout'><nav>{['/','/lead','/catalogues','/sync','/settings'].map((p,i)=><NavLink key={p} to={p}>{['Home','Capture Lead','Catalogues','Sync Status','Settings'][i]}</NavLink>)}</nav><main><Routes><Route path='/' element={<HomePage/>}/><Route path='/lead' element={<LeadPage/>}/><Route path='/catalogues' element={<CataloguesPage/>}/><Route path='/sync' element={<SyncPage/>}/><Route path='/settings' element={<SettingsPage/>}/></Routes></main></div>}

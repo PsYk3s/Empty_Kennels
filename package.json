@@ -1,10 +1,14 @@
 {
-  "name": "spca-adoptions",
+  "name": "pb-app",
   "private": true,
-  "workspaces": ["api", "web", "shared"],
+  "workspaces": ["server", "web"],
   "scripts": {
-    "dev": "concurrently -n api,web \"npm:dev -w api\" \"npm:dev -w web\"",
-    "build": "npm run build -w api && npm run build -w web"
+    "dev": "concurrently -n server,web \"npm:dev -w server\" \"npm:dev -w web\"",
+    "dev:web": "npm run dev -w web",
+    "dev:server": "npm run dev -w server",
+    "build": "npm run build -w server && npm run build -w web",
+    "db:migrate": "node database/migrations/run.js",
+    "db:seed": "node database/seeds/seed.js"
   },
   "devDependencies": {
     "concurrently": "^9.0.0"
