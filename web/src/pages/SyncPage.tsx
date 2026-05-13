@@ -1,2 +1,2 @@
 import { useEffect, useState } from 'react'; import { db } from '../storage/db'; import { syncNow } from '../sync/syncManager';
-export function SyncPage(){ const [pending,setPending]=useState(0); useEffect(()=>{db.leads.where('syncStatus').notEqual('synced').count().then(setPending);},[]); return <section><h2>Sync Status</h2><p>Pending: {pending}</p><button onClick={syncNow}>Manual Sync</button></section>; }
+export function SyncPage(){ const [pending,setPending]=useState(0); useEffect(()=>{db.leads.pendingCount().then(setPending);},[]); return <section><h2>Sync Status</h2><p>Pending: {pending}</p><button onClick={syncNow}>Manual Sync</button></section>; }
