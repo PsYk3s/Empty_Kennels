@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { db } from '../storage/db';
-import { api } from '../api/client';
+import { api } from '../api/index';
 import { syncNow } from '../sync/syncManager';
 
 type Supplier = {

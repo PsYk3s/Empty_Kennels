@@ -236,6 +236,75 @@ textarea {
 	font-weight: 600;
 }
 
+.lead-queue-list {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	margin-bottom: 1rem;
+	max-height: 50vh;
+	overflow-y: auto;
+}
+
+.queue-item {
+	border: 1px solid #dce4f0;
+	border-radius: 10px;
+	padding: 0.75rem;
+	background: #f8fbff;
+}
+
+.queue-item-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 0.35rem;
+}
+
+.sync-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	font-size: 0.9rem;
+}
+
+.sync-badge.pending {
+	background: #fff3cd;
+	color: #856404;
+}
+
+.sync-badge.syncing {
+	background: #cfe2ff;
+	color: #084298;
+	animation: spin 1s linear infinite;
+}
+
+.sync-badge.synced {
+	background: #d1e7dd;
+	color: #0f5132;
+}
+
+.sync-badge.failed {
+	background: #f8d7da;
+	color: #842029;
+}
+
+.queue-item-meta {
+	font-size: 0.9rem;
+	color: #666;
+	margin: 0;
+}
+
+@keyframes spin {
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
+}
+
 .bottom-nav {
 	padding: 0.65rem 0.75rem calc(0.9rem + env(safe-area-inset-bottom));
 	display: grid;

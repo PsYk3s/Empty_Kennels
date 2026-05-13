@@ -2,15 +2,13 @@ import { useEffect, useState } from 'react';
 import { NavLink, Route, Routes } from 'react-router-dom';
 import { HomePage } from './pages/HomePage';
 import { LeadPage } from './pages/LeadPage';
-import { CataloguesPage } from './pages/CataloguesPage';
 import { SyncPage } from './pages/SyncPage';
-import { SettingsPage } from './pages/SettingsPage';
+import { InstallPrompt } from './components/InstallPrompt';
 import { startSyncLoop } from './sync/syncManager';
 
 const navItems = [
 	{ path: '/lead', label: 'Capture' },
 	{ path: '/sync', label: 'Queue' },
-	{ path: '/settings', label: 'Settings' },
 ];
 
 export default function App() {
@@ -32,7 +30,9 @@ export default function App() {
 	}, []);
 
 	return (
-		<div className='app-shell'>
+		<>
+			<InstallPrompt />
+			<div className='app-shell'>
 			<header className='top-bar'>
 				<div className='brand-block'>
 					<p className='eyebrow'>Lead Capture</p>
@@ -47,9 +47,7 @@ export default function App() {
 				<Routes>
 					<Route path='/' element={<HomePage />} />
 					<Route path='/lead' element={<LeadPage />} />
-					<Route path='/catalogues' element={<CataloguesPage />} />
 					<Route path='/sync' element={<SyncPage />} />
-					<Route path='/settings' element={<SettingsPage />} />
 				</Routes>
 			</main>
 
@@ -61,5 +59,6 @@ export default function App() {
 				))}
 			</nav>
 		</div>
+	</>
 	);
 }
