@@ -1,6 +1,9 @@
 {
   "name": "pb-app",
   "private": true,
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "workspaces": ["server", "web"],
   "scripts": {
     "dev": "concurrently -n server,web \"npm:dev -w server\" \"npm:dev -w web\"",
