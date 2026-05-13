@@ -3,19 +3,39 @@ import { db } from '../storage/db';
 import { api } from '../api/index';
 import { syncNow } from '../sync/syncManager';
 
+type SMTPStatus = { ok: boolean; message: string } | null;
+
 export function SyncPage() {
   const [leads, setLeads] = useState<any[]>([]);
   const [syncing, setSyncing] = useState(false);
   const [emailing, setEmailing] = useState(false);
   const [notice, setNotice] = useState('');
+  const [smtpStatus, setSmtpStatus] = useState<SMTPStatus>(null);
+  const [loadingSmtp, setLoadingSmtp] = useState(true);
 
   useEffect(() => {
     loadLeads();
+    checkSmtp();
   }, []);
 
   const loadLeads = async () => {
     const recentLeads = await db.leads.allList(100);
     setLeads(recentLeads);
+  };
+
+  const checkSmtp = async () => {
+    setLoadingSmtp(true);
+    try {
+      const result = await api.get<SMTPStatus>('/health/smtp');
+      setSmtpStatus(result);
+    } catch (e) {
+      setSmtpStatus({
+        ok: false,
+        message: e instanceof Error ? e.message : 'Could not verify SMTP connection'
+      });
+    } finally {
+      setLoadingSmtp(false);
+    }
   };
 
   const handleSync = async () => {
@@ -52,6 +72,12 @@ export function SyncPage() {
         <h2>Sync Queue</h2>
       </div>
 
+      {!loadingSmtp && smtpStatus && (
+        <div className={`status-message ${smtpStatus.ok ? 'success' : 'error'}`}>
+          {smtpStatus.ok ? '✓' : '⚠'} {smtpStatus.message}
+        </div>
+      )}
+
       {leads.length > 0 ? (
         <>
           <div className='lead-queue-list'>
@@ -74,6 +100,26 @@ export function SyncPage() {
                 <p className='queue-item-meta'>{lead.email || 'No email'}</p>
               </div>
             ))}
+          </div>
+
+          <div className='status-legend'>
+            <div className='legend-title'>Status Legend</div>
+            <div className='legend-row'>
+              <span className='legend-icon success'>✓</span>
+              <span className='legend-text'>Synced / Sent</span>
+            </div>
+            <div className='legend-row'>
+              <span className='legend-icon pending'>…</span>
+              <span className='legend-text'>Pending</span>
+            </div>
+            <div className='legend-row'>
+              <span className='legend-icon failed'>!</span>
+              <span className='legend-text'>Failed</span>
+            </div>
+            <div className='legend-row'>
+              <span className='legend-icon disabled'>-</span>
+              <span className='legend-text'>Disabled</span>
+            </div>
           </div>
 
           <div className='actions-row'>
