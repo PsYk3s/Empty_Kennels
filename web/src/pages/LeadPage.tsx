@@ -30,7 +30,7 @@ const initialForm: LeadForm = {
 	selectedSuppliers: [],
 };
 
-const quickInterests = ['Adoption', 'Volunteer', 'Foster', 'Donations'];
+const quickInterests = ['Product Demo', 'Pricing', 'Partnership', 'Support'];
 
 export function LeadPage() {
 	const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -148,7 +148,7 @@ export function LeadPage() {
 					<input
 						value={form.interestArea}
 						onChange={(e) => setField('interestArea', e.target.value)}
-						placeholder='Adoption, foster, donations...'
+						placeholder='Demo, pricing, onboarding...'
 					/>
 				</label>
 

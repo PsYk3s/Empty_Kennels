@@ -37,7 +37,7 @@ export default function Home() {
   return (
     <div style={{ padding: 24, fontFamily: "system-ui" }}>
       <h1>Empty Kennels</h1>
-      <p>Available animals: {data?.length ?? 0}</p>
+      <p>Available listings: {data?.length ?? 0}</p>
 
       <div style={{ display: "grid", gap: 16 }}>
         {data?.map((item) => (

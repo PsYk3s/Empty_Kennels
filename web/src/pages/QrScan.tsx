@@ -18,6 +18,11 @@ type Listing = {
   };
 };
 
+function statusLabel(status: Listing["status"]) {
+  if (status === "ADOPTED") return "CLOSED";
+  return status;
+}
+
 export default function QrScan() {
   const { token } = useParams();
   const qc = useQueryClient();
@@ -124,7 +129,7 @@ export default function QrScan() {
         }}
       >
         <div>
-          <strong>Status:</strong> {data.status}
+          <strong>Status:</strong> {statusLabel(data.status)}
         </div>
         <div>
           <strong>Last confirmed:</strong> {data.lastVerifiedAt ?? "Unknown"}

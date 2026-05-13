@@ -29,6 +29,11 @@ const STATUSES: StaffListing["status"][] = [
   "ADOPTED",
 ];
 
+function statusLabel(status: StaffListing["status"]) {
+  if (status === "ADOPTED") return "CLOSED";
+  return status;
+}
+
 export default function Staff() {
   const qc = useQueryClient();
   const [devPhone, setDevPhone] = useState("+27000000002");
@@ -159,7 +164,7 @@ export default function Staff() {
             disabled={status === s}
             style={{ padding: "6px 10px" }}
           >
-            {s}
+            {statusLabel(s)}
           </button>
         ))}
       </div>
@@ -185,7 +190,7 @@ export default function Staff() {
                 <strong>{l.animal.name}</strong> — {l.animal.species}
                 {l.animal.breed ? ` • ${l.animal.breed}` : ""}
                 <div style={{ fontSize: 12, opacity: 0.7 }}>
-                  Status: {l.status}
+                  Status: {statusLabel(l.status)}
                 </div>
               </div>
 
@@ -205,7 +210,7 @@ export default function Staff() {
                     }
                     disabled={updateStatus.isPending}
                   >
-                    Set {a}
+                    Set {statusLabel(a)}
                   </button>
                 ))}
 
