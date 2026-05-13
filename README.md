@@ -137,8 +137,6 @@ Short answer: **yes, it will update when you deploy new code**, with PWA rules:
 - Existing offline data in IndexedDB remains on device across app updates.
 - If you ship IndexedDB schema changes, bump Dexie DB version and include migration logic.
 - If API contracts change, maintain backward compatibility for at least one app version to avoid sync failures during rollout.
-
-
 ## Vercel Deployment Fix ("Cannot GET /")
 
 If Vercel shows **Cannot GET /**, it is usually deploying the Node API entrypoint instead of the built SPA assets.
