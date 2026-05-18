@@ -9,6 +9,9 @@ function writeLeads(leads: any[]) {
 
 export const db = {
   leads: {
+    async get(uuid: string) {
+      return readLeads().find((l: any) => l.uuid === uuid) || null;
+    },
     async put(lead: any) {
       const leads = readLeads();
       const idx = leads.findIndex((l: any) => l.uuid === lead.uuid);

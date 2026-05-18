@@ -1,10 +1,11 @@
 import { Router } from 'express';
-import { batchCreateLeads, emailLeadListToAdmin } from '../controllers/leadsController.js';
+import { batchCreateLeads, emailLeadListToAdmin, getLeadChanges } from '../controllers/leadsController.js';
 import { pool } from '../database/db.js';
 import nodemailer from 'nodemailer';
 const router = Router();
 router.post('/leads/batch', batchCreateLeads);
 router.post('/leads/email-admin-list', emailLeadListToAdmin);
+router.get('/leads/changes', getLeadChanges);
 router.get('/health/smtp', async (req, res) => {
   try {
     const transporter = nodemailer.createTransport({

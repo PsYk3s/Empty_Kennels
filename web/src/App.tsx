@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { NavLink, Route, Routes } from 'react-router-dom';
+import { NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { HomePage } from './pages/HomePage';
 import { LeadPage } from './pages/LeadPage';
 import { SyncPage } from './pages/SyncPage';
@@ -13,9 +13,10 @@ const navItems = [
 
 export default function App() {
 	const [online, setOnline] = useState(navigator.onLine);
+	const location = useLocation();
 
 	useEffect(() => {
-		startSyncLoop();
+		const stopSyncLoop = startSyncLoop();
 
 		const onOnline = () => setOnline(true);
 		const onOffline = () => setOnline(false);
@@ -26,6 +27,7 @@ export default function App() {
 		return () => {
 			window.removeEventListener('online', onOnline);
 			window.removeEventListener('offline', onOffline);
+			stopSyncLoop();
 		};
 	}, []);
 
@@ -44,11 +46,13 @@ export default function App() {
 			</header>
 
 			<main className='app-content'>
-				<Routes>
-					<Route path='/' element={<HomePage />} />
-					<Route path='/lead' element={<LeadPage />} />
-					<Route path='/sync' element={<SyncPage />} />
-				</Routes>
+				<div key={location.pathname} className='route-transition'>
+					<Routes location={location}>
+						<Route path='/' element={<HomePage />} />
+						<Route path='/lead' element={<LeadPage />} />
+						<Route path='/sync' element={<SyncPage />} />
+					</Routes>
+				</div>
 			</main>
 
 			<nav className='bottom-nav' aria-label='Primary'>

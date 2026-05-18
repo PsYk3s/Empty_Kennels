@@ -5,6 +5,11 @@ import { syncLeadToBrevo } from '../integrations/brevoService.js';
 
 const leadSchema = z.object({ uuid: z.string(), firstName: z.string(), lastName: z.string(), company: z.string().optional(), email: z.string().email(), phone: z.string().optional(), interestArea: z.string().optional(), notes: z.string().optional(), eventId: z.number(), selectedSuppliers: z.array(z.number()).default([]), createdAt: z.string() });
 
+const syncQuerySchema = z.object({
+  since: z.string().datetime().optional(),
+  limit: z.coerce.number().int().min(1).max(500).optional()
+});
+
 export async function batchCreateLeads(req, res, next) {
   try {
     const leads = z.array(leadSchema).parse(req.body.leads || []);
@@ -93,6 +98,55 @@ export async function emailLeadListToAdmin(req, res, next) {
 
     await sendFullLeadListEmail({ leads: rows });
     res.json({ ok: true, count: rows.length });
+  } catch (e) {
+    next(e);
+  }
+}
+
+export async function getLeadChanges(req, res, next) {
+  try {
+    const parsed = syncQuerySchema.parse(req.query);
+    const since = parsed.since;
+    const limit = parsed.limit || 200;
+
+    const rows = (
+      await pool.query(
+        `SELECT uuid, first_name, last_name, company, email, phone, interest_area, notes,
+                event_id, created_at, updated_at, sync_status, email_sent_status,
+                brevo_sync_status, last_synced_at
+         FROM leads
+         WHERE ($1::timestamptz IS NULL OR COALESCE(updated_at, created_at) > $1::timestamptz)
+         ORDER BY COALESCE(updated_at, created_at) ASC
+         LIMIT $2`,
+        [since || null, limit]
+      )
+    ).rows;
+
+    const nextCursor = rows.length
+      ? new Date(rows[rows.length - 1].updated_at || rows[rows.length - 1].created_at).toISOString()
+      : since || null;
+
+    res.json({
+      leads: rows.map((row) => ({
+        uuid: row.uuid,
+        firstName: row.first_name,
+        lastName: row.last_name,
+        company: row.company || '',
+        email: row.email,
+        phone: row.phone || '',
+        interestArea: row.interest_area || '',
+        notes: row.notes || '',
+        eventId: row.event_id,
+        selectedSuppliers: [],
+        createdAt: new Date(row.created_at).toISOString(),
+        updatedAt: new Date(row.updated_at || row.created_at).toISOString(),
+        lastSyncedAt: row.last_synced_at ? new Date(row.last_synced_at).toISOString() : null,
+        syncStatus: row.sync_status || 'synced',
+        emailSentStatus: row.email_sent_status || 'pending',
+        brevoSyncStatus: row.brevo_sync_status || 'pending'
+      })),
+      nextCursor
+    });
   } catch (e) {
     next(e);
   }
