@@ -123,11 +123,9 @@ export function SyncPage() {
         <h2>Sync Queue</h2>
       </div>
 
-      {!loadingSmtp && smtpStatus && (
-        <div className={`status-message ${smtpStatus.ok ? 'success' : 'error'}`}>
-          {smtpStatus.ok ? 'Email service ready.' : smtpStatus.message}
-        </div>
-      )}
+      {!loadingSmtp && smtpStatus && !smtpStatus.ok ? (
+        <div className='status-message error'>{smtpStatus.message}</div>
+      ) : null}
 
       {!online ? (
         <div className='status-message error'>Offline mode active. Leads are saved locally and will auto-retry sync/email when online.</div>
@@ -206,13 +204,13 @@ export function SyncPage() {
                 </button>
 
                 <div id={`lead-${lead.uuid}`} className='queue-item-details'>
-                  <div className='queue-detail-grid'>
-                    <div><span>Phone</span><strong>{lead.phone || 'None'}</strong></div>
-                    <div><span>Company</span><strong>{lead.company || 'None'}</strong></div>
-                    <div><span>Interest</span><strong>{lead.interestArea || 'None'}</strong></div>
-                    <div><span>Updated</span><strong>{formatTs(lead.updatedAt)}</strong></div>
-                    <div><span>Last Synced</span><strong>{formatTs(lead.lastSyncedAt)}</strong></div>
-                    <div><span>Created</span><strong>{formatTs(lead.createdAt)}</strong></div>
+                  <div className='queue-detail-inline'>
+                    <span>Phone: <strong>{lead.phone || 'None'}</strong></span>
+                    <span>Company: <strong>{lead.company || 'None'}</strong></span>
+                    <span>Interest: <strong>{lead.interestArea || 'None'}</strong></span>
+                    <span>Updated: <strong>{formatTs(lead.updatedAt)}</strong></span>
+                    <span>Last Synced: <strong>{formatTs(lead.lastSyncedAt)}</strong></span>
+                    <span>Created: <strong>{formatTs(lead.createdAt)}</strong></span>
                   </div>
                   {lead.notes ? <p className='queue-item-notes'>{lead.notes}</p> : null}
                 </div>

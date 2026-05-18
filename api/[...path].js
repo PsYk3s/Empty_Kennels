@@ -17,6 +17,11 @@ const CONFIG = {
     user: process.env.SMTP_LOGIN || '',
     pass: process.env.SMTP_KEY || '',
     from: process.env.SMTP_FROM || 'warrenb@pienaarbros.co.za'
+  },
+  brevo: {
+    enabled: String(process.env.BREVO_ENABLED || 'true').toLowerCase() !== 'false',
+    apiKey: process.env.BREVO_API_KEY || process.env.BREVO_KEY || '',
+    listId: Number(process.env.BREVO_LIST_ID || 26)
   }
 };
 
@@ -57,6 +62,50 @@ function smtpErrorMessage(error) {
     return 'SMTP authentication failed. Check SMTP_LOGIN and SMTP_KEY in your environment variables.';
   }
   return `SMTP error: ${text}`;
+}
+
+function brevoErrorMessage(error) {
+  const text = error instanceof Error ? error.message : String(error || 'Brevo request failed');
+  if (/401|403|api[- ]?key|unauthor/i.test(text)) {
+    return 'Brevo authentication failed. Check BREVO_API_KEY in your environment variables.';
+  }
+  return `Brevo error: ${text}`;
+}
+
+async function syncLeadToBrevoList(lead) {
+  if (!CONFIG.brevo.enabled) {
+    return { status: 'disabled', error: null };
+  }
+  if (!CONFIG.brevo.apiKey || !CONFIG.brevo.listId) {
+    throw new Error('Brevo is enabled but BREVO_API_KEY or BREVO_LIST_ID is missing');
+  }
+
+  const response = await fetch('https://api.brevo.com/v3/contacts', {
+    method: 'POST',
+    headers: {
+      accept: 'application/json',
+      'content-type': 'application/json',
+      'api-key': CONFIG.brevo.apiKey
+    },
+    body: JSON.stringify({
+      email: String(lead.email || '').trim(),
+      attributes: {
+        FIRSTNAME: String(lead.first_name || '').trim(),
+        LASTNAME: String(lead.last_name || '').trim(),
+        SMS: String(lead.phone || '').trim() || undefined,
+        COMPANY: String(lead.company || '').trim() || undefined
+      },
+      listIds: [CONFIG.brevo.listId],
+      updateEnabled: true
+    })
+  });
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => 'Brevo request failed');
+    throw new Error(text || `HTTP ${response.status}`);
+  }
+
+  return { status: 'synced', error: null };
 }
 
 async function sendLeadEmail({ lead, suppliers, eventName }) {
@@ -104,7 +153,7 @@ function mapRowToLead(row) {
     lastSyncedAt: row.last_synced_at ? new Date(row.last_synced_at).toISOString() : null,
     syncStatus: row.sync_status || 'synced',
     emailSentStatus: row.email_sent_status || 'pending',
-    brevoSyncStatus: row.brevo_sync_status || 'disabled'
+    brevoSyncStatus: row.brevo_sync_status || (CONFIG.brevo.enabled ? 'pending' : 'disabled')
   };
 }
 
@@ -350,7 +399,7 @@ module.exports = async function handler(req, res) {
 
           const inserted = await pool.query(
             `INSERT INTO leads (uuid,first_name,last_name,company,email,phone,interest_area,notes,event_id,created_at,updated_at,sync_status,email_sent_status,brevo_sync_status)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW(),'synced','pending','disabled')
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW(),'synced','pending',CASE WHEN $11 THEN 'pending' ELSE 'disabled' END)
              ON CONFLICT (uuid) DO UPDATE SET
                first_name = EXCLUDED.first_name,
                last_name = EXCLUDED.last_name,
@@ -361,7 +410,8 @@ module.exports = async function handler(req, res) {
                notes = EXCLUDED.notes,
                event_id = EXCLUDED.event_id,
                updated_at = NOW(),
-               sync_status = 'synced'
+               sync_status = 'synced',
+               brevo_sync_status = CASE WHEN leads.brevo_sync_status = 'synced' THEN 'synced' WHEN $11 THEN 'pending' ELSE 'disabled' END
              RETURNING *`,
             [
               lead.uuid,
@@ -373,13 +423,16 @@ module.exports = async function handler(req, res) {
               lead.interestArea || null,
               lead.notes || null,
               Number(lead.eventId || 1),
-              lead.createdAt || new Date().toISOString()
+              lead.createdAt || new Date().toISOString(),
+              CONFIG.brevo.enabled
             ]
           );
 
           const row = inserted.rows[0];
           let emailSentStatus = row.email_sent_status || 'pending';
           let emailError = null;
+          let brevoSyncStatus = row.brevo_sync_status || (CONFIG.brevo.enabled ? 'pending' : 'disabled');
+          let brevoError = null;
 
           try {
             if (emailSentStatus !== 'sent') {
@@ -396,24 +449,34 @@ module.exports = async function handler(req, res) {
             emailError = emailSendError instanceof Error ? emailSendError.message : 'Email send failed';
           }
 
+          try {
+            if (brevoSyncStatus !== 'synced') {
+              const brevoResult = await syncLeadToBrevoList(row);
+              brevoSyncStatus = brevoResult.status;
+            }
+          } catch (brevoSyncError) {
+            brevoSyncStatus = 'failed';
+            brevoError = brevoSyncError instanceof Error ? brevoSyncError.message : 'Brevo sync failed';
+          }
+
           await pool.query(
             'UPDATE leads SET sync_status=$2, email_sent_status=$3, brevo_sync_status=$4, last_synced_at=NOW(), updated_at=NOW() WHERE uuid=$1',
-            [lead.uuid, 'synced', emailSentStatus, 'disabled']
+            [lead.uuid, 'synced', emailSentStatus, brevoSyncStatus]
           );
 
           result.push({
             uuid: lead.uuid,
             syncStatus: 'synced',
             emailSentStatus,
-            brevoSyncStatus: 'disabled',
-            error: emailError
+            brevoSyncStatus,
+            error: [emailError, brevoError].filter(Boolean).join(' | ') || null
           });
         } catch (leadError) {
           result.push({
             uuid: lead.uuid,
             syncStatus: 'failed',
             emailSentStatus: 'failed',
-            brevoSyncStatus: 'disabled',
+            brevoSyncStatus: CONFIG.brevo.enabled ? 'failed' : 'disabled',
             error: leadError instanceof Error ? leadError.message : 'Lead sync failed'
           });
         }
