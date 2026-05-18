@@ -1,16 +1,22 @@
 const { Pool } = require('pg');
 const nodemailer = require('nodemailer');
 
+try {
+  require('dotenv').config({ path: '.env' });
+} catch {
+  // In some runtimes dotenv may be unavailable; Vercel env vars still work.
+}
+
 const CONFIG = {
-  databaseUrl: 'postgresql://neondb_owner:npg_zAL9MYsc2GXg@ep-withered-tree-aqrdxlrg-pooler.c-8.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require',
+  databaseUrl: process.env.DATABASE_URL || '',
   adminEmail: 'warrenb@pienaarbros.co.za',
   smtp: {
-    host: 'smtp-relay.brevo.com',
-    port: 587,
+    host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
+    port: Number(process.env.SMTP_PORT || 587),
     secure: false,
-    user: 'warrenb@pienaarbros.co.za',
-    pass: 'SrR5zKz6VqNZ2pJ',
-    from: 'warrenb@pienaarbros.co.za'
+    user: process.env.SMTP_LOGIN || '',
+    pass: process.env.SMTP_KEY || '',
+    from: process.env.SMTP_FROM || 'warrenb@pienaarbros.co.za'
   }
 };
 
@@ -43,6 +49,14 @@ function parseBody(req) {
 
 function uniqueEmails(values) {
   return [...new Set((values || []).map((v) => String(v || '').trim().toLowerCase()).filter(Boolean))];
+}
+
+function smtpErrorMessage(error) {
+  const text = error instanceof Error ? error.message : String(error || 'SMTP request failed');
+  if (/auth|login|535|invalid/i.test(text)) {
+    return 'SMTP authentication failed. Check SMTP_LOGIN and SMTP_KEY in your environment variables.';
+  }
+  return `SMTP error: ${text}`;
 }
 
 async function sendLeadEmail({ lead, suppliers, eventName }) {
@@ -100,8 +114,11 @@ function isVercelHost(req) {
 }
 
 function dbConfigErrorForRequest(req) {
+  if (!CONFIG.databaseUrl) {
+    return 'DATABASE_URL is not configured. Add it in Vercel Project Settings -> Environment Variables.';
+  }
   if (isVercelHost(req) && CONFIG.databaseUrl.includes('localhost')) {
-    return 'Database is set to localhost. For Vercel deployment, set CONFIG.databaseUrl in api/[...path].js to a hosted Postgres connection string.';
+    return 'DATABASE_URL points to localhost. Use your hosted Postgres URL in Vercel environment variables.';
   }
   return null;
 }
@@ -240,47 +257,35 @@ module.exports = async function handler(req, res) {
     }
 
     if (req.method === 'GET' && route === '/health/db') {
-      if (dbConfigError) {
-        return json(res, 500, { ok: false, message: dbConfigError });
-      }
-
       await pool.query('SELECT 1');
       return json(res, 200, { ok: true, message: 'Database connection is healthy' });
     }
 
     if ((req.method === 'GET' || req.method === 'POST') && route === '/health/smtp') {
-      await transporter.verify();
-      return json(res, 200, { ok: true, message: 'SMTP credentials are valid' });
+      try {
+        await transporter.verify();
+        return json(res, 200, { ok: true, message: 'SMTP credentials are valid' });
+      } catch (smtpError) {
+        return json(res, 200, { ok: false, message: smtpErrorMessage(smtpError) });
+      }
     }
 
     if (req.method === 'GET' && route === '/suppliers') {
-      if (dbConfigError) {
-        return json(res, 500, { error: dbConfigError });
-      }
       const result = await pool.query('SELECT * FROM suppliers WHERE is_active=true');
       return json(res, 200, result.rows);
     }
 
     if (req.method === 'GET' && route === '/catalogues') {
-      if (dbConfigError) {
-        return json(res, 500, { error: dbConfigError });
-      }
       const result = await pool.query('SELECT * FROM catalogues WHERE is_active=true');
       return json(res, 200, result.rows);
     }
 
     if (req.method === 'GET' && route === '/sync/status') {
-      if (dbConfigError) {
-        return json(res, 500, { error: dbConfigError });
-      }
       const result = await pool.query("SELECT COUNT(*) FILTER (WHERE sync_status!='synced') AS pending, MAX(updated_at) AS last_sync FROM leads");
       return json(res, 200, result.rows[0] || { pending: 0, last_sync: null });
     }
 
     if (req.method === 'GET' && route === '/leads/changes') {
-      if (dbConfigError) {
-        return json(res, 500, { error: dbConfigError });
-      }
       const since = typeof req.query.since === 'string' ? req.query.since : null;
       const parsedLimit = Number(req.query.limit || 200);
       const limit = Number.isFinite(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 500) : 200;
@@ -306,9 +311,6 @@ module.exports = async function handler(req, res) {
     }
 
     if (req.method === 'POST' && route === '/device/register') {
-      if (dbConfigError) {
-        return json(res, 500, { error: dbConfigError });
-      }
       const body = parseBody(req);
       const deviceIdentifier = String(body.deviceIdentifier || '').trim();
       const eventId = Number(body.eventId || 1);
@@ -324,20 +326,18 @@ module.exports = async function handler(req, res) {
     }
 
     if (req.method === 'POST' && route === '/leads/email-admin-list') {
-      if (dbConfigError) {
-        return json(res, 500, { error: dbConfigError });
-      }
       const rows = (
         await pool.query('SELECT first_name, last_name, email, phone, company, interest_area, created_at FROM leads ORDER BY created_at DESC')
       ).rows;
-      await sendFullLeadListEmail(rows);
-      return json(res, 200, { ok: true, count: rows.length });
+      try {
+        await sendFullLeadListEmail(rows);
+        return json(res, 200, { ok: true, count: rows.length, message: `Lead list emailed (${rows.length} leads).` });
+      } catch (smtpError) {
+        return json(res, 200, { ok: false, count: rows.length, message: smtpErrorMessage(smtpError) });
+      }
     }
 
     if (req.method === 'POST' && route === '/leads/batch') {
-      if (dbConfigError) {
-        return json(res, 500, { error: dbConfigError });
-      }
       const body = parseBody(req);
       const leads = Array.isArray(body.leads) ? body.leads : [];
       const result = [];

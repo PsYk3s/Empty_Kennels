@@ -73,9 +73,9 @@ Production-ready monorepo containing:
    ```
 
 ## Configuration
-- Runtime config is hardcoded in `server/src/config.js`.
-- Database migration and seed scripts use a hardcoded local connection string.
-- No `.env` files are required for local use.
+- Vercel API runtime config is read from environment variables in `api/[...path].js`.
+- For local API testing, create a root `.env` file with `DATABASE_URL`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_LOGIN`, `SMTP_KEY`, and `SMTP_FROM`.
+- In Vercel production, set the same keys in Project Settings -> Environment Variables.
 
 ## Sync Behavior
 - Sync runs on startup, online event, lead create and 10-minute interval.

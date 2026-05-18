@@ -70,8 +70,12 @@ export function SyncPage() {
     setEmailing(true);
     setNotice('');
     try {
-      const result = await api.post<{ count: number }>('/leads/email-admin-list', {});
-      setNotice(`Lead list emailed to admin (${result.count} leads).`);
+      const result = await api.post<{ ok?: boolean; count?: number; message?: string }>('/leads/email-admin-list', {});
+      if (result.ok) {
+        setNotice(result.message || `Lead list emailed to admin (${result.count || 0} leads).`);
+      } else {
+        setNotice(result.message || 'Could not email lead list due to SMTP configuration.');
+      }
     } catch (e) {
       setNotice(e instanceof Error ? e.message : 'Could not email lead list.');
     } finally {

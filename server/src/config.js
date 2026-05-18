@@ -8,7 +8,7 @@ export const APP_CONFIG = {
     port: 587,
     secure: false,
     user: 'warrenb@pienaarbros.co.za',
-    pass: 'SrR5zKz6VqNZ2pJ',
+    pass: '',
     from: 'warrenb@pienaarbros.co.za'
   },
   brevo: {
