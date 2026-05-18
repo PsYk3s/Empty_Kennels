@@ -23,8 +23,8 @@ export const db = {
       return readLeads()
         .slice()
         .sort((a: any, b: any) => {
-          const at = new Date(a.updatedAt || a.createdAt || 0).getTime();
-          const bt = new Date(b.updatedAt || b.createdAt || 0).getTime();
+          const at = new Date(a.createdAt || a.updatedAt || 0).getTime();
+          const bt = new Date(b.createdAt || b.updatedAt || 0).getTime();
           return bt - at;
         })
         .slice(0, limit);

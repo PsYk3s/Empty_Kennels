@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { db } from '../storage/db';
 import { api } from '../api/index';
 import { syncNow } from '../sync/syncManager';
+import type { Lead } from '../types/lead';
 
 type Supplier = {
 	id: number;
@@ -70,7 +71,7 @@ export function LeadPage() {
 		setMessage('Saving lead...');
 
 		const now = new Date().toISOString();
-		const lead = {
+		const lead: Lead = {
 			...form,
 			uuid: crypto.randomUUID(),
 			eventId: 1,
@@ -92,10 +93,11 @@ export function LeadPage() {
 		<section className='screen'>
 			<div className='screen-head'>
 				<h2>New Lead</h2>
-
+				<p>Fill in the visitor's details below.</p>
 			</div>
 
 			<div className='capture-grid'>
+				<p className='form-section-label'>Contact Details</p>
 				<label>
 					First Name*
 					<input
@@ -142,6 +144,8 @@ export function LeadPage() {
 						autoComplete='organization'
 					/>
 				</label>
+
+				<p className='form-section-label full-width'>Interest &amp; Notes</p>
 
 				<label>
 					Interest Area

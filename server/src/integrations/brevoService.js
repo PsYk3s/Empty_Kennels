@@ -12,10 +12,6 @@ export async function syncLeadToBrevo(lead) {
     throw new Error('Missing BREVO_API_KEY or BREVO_LIST_ID. Use Brevo API v3 credentials for contacts sync.');
   }
 
-  if (!apiKey.startsWith('xkeysib-')) {
-    throw new Error('Invalid BREVO_API_KEY format. Use a Brevo API v3 key starting with xkeysib- (not SMTP key/password).');
-  }
-
   const response = await fetch('https://api.brevo.com/v3/contacts', {
     method: 'POST',
     headers: {

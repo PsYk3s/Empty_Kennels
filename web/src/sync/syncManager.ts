@@ -264,14 +264,14 @@ async function pullRemoteChanges() {
 }
 
 export async function syncNow(options: SyncOptions = {}) {
-	if (running) return;
+	if (running) return false;
 	if (!navigator.onLine) {
 		setSyncHealth({
 			lastRunAt: new Date().toISOString(),
 			lastError: 'Offline. Leads are queued and will retry when back online.'
 		});
 		window.dispatchEvent(new CustomEvent(CYCLE_EVENT, { detail: { changed: false } }));
-		return;
+		return false;
 	}
 
 	running = true;
@@ -307,6 +307,8 @@ export async function syncNow(options: SyncOptions = {}) {
 		running = false;
 		window.dispatchEvent(new CustomEvent(CYCLE_EVENT, { detail: { changed: hasChanges } }));
 	}
+
+	return hasChanges;
 }
 
 export function startSyncLoop() {

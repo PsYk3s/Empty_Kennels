@@ -7,8 +7,9 @@ import { InstallPrompt } from './components/InstallPrompt';
 import { startSyncLoop } from './sync/syncManager';
 
 const navItems = [
-	{ path: '/lead', label: 'Capture' },
-	{ path: '/sync', label: 'Queue' },
+	{ path: '/', label: 'Home', icon: '⌂', exact: true },
+	{ path: '/lead', label: 'Capture', icon: '+', exact: false },
+	{ path: '/sync', label: 'Queue', icon: '⟳', exact: false },
 ];
 
 export default function App() {
@@ -37,7 +38,6 @@ export default function App() {
 			<div className='app-shell'>
 			<header className='top-bar'>
 				<div className='brand-block'>
-					<p className='eyebrow'>Lead Capture</p>
 					<h1>PB App</h1>
 				</div>
 				<p className={`connection-pill ${online ? 'online' : 'offline'}`}>
@@ -57,8 +57,14 @@ export default function App() {
 
 			<nav className='bottom-nav' aria-label='Primary'>
 				{navItems.map((item) => (
-					<NavLink key={item.path} to={item.path} className='nav-pill'>
-						{item.label}
+					<NavLink
+						key={item.path}
+						to={item.path}
+						end={item.exact}
+						className={({ isActive }) => `nav-pill${isActive ? ' active' : ''}`}
+					>
+						<span className='nav-icon' aria-hidden='true'>{item.icon}</span>
+						<span className='nav-label'>{item.label}</span>
 					</NavLink>
 				))}
 			</nav>
