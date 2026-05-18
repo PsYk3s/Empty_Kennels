@@ -56,7 +56,7 @@ export function SyncPage() {
   };
 
   const syncDisplay = (() => {
-    if (syncing) return { label: 'Syncing…', variant: 'syncing' };
+    if (syncing) return { label: 'Syncing\u2026', variant: 'syncing' };
     if (health.lastError) return { label: 'Last sync failed', variant: 'failed' };
     return null;
   })();
@@ -76,7 +76,7 @@ export function SyncPage() {
 
       {!online ? (
         <div className='status-message error'>
-          Offline — leads saved locally, will sync when back online.
+          Offline \u2014 leads saved locally, will sync when back online.
         </div>
       ) : null}
 
@@ -86,58 +86,22 @@ export function SyncPage() {
         </div>
       ) : null}
 
-      <article className={`sync-health-accordion${expandedHealth ? ' open' : ''}`}>
-        <button
-          type='button'
-          className='sync-health-toggle'
-          onClick={() => setExpandedHealth((v) => !v)}
-          aria-expanded={expandedHealth}
-        >
-          <span className='sync-health-title'>Sync Health</span>
-          <span className={`queue-chevron${expandedHealth ? ' open' : ''}`} aria-hidden='true' />
-        </button>
-        <div className='sync-health-details'>
-          <div className='health-inline'>
-            <span>ID: <strong>{getDeviceId()}</strong></span>
-            <span>Last Run: <strong>{health.lastRunAt ? new Date(health.lastRunAt).toLocaleTimeString() : 'Never'}</strong></span>
-            <span>Last Push: <strong>{health.lastPushAt ? new Date(health.lastPushAt).toLocaleTimeString() : 'Never'}</strong></span>
-            <span>Last Pull: <strong>{health.lastPullAt ? new Date(health.lastPullAt).toLocaleTimeString() : 'Never'}</strong></span>
-          </div>
-          {health.lastError ? (
-            <div className='sync-health-error'>\u26a0 {health.lastError}</div>
-          ) : null}
-        </div>
-      </article>
-
       {leads.length > 0 ? (
-        <>
-          <div className='lead-queue-list'>
-            {leads.map((lead) => (
-              <LeadCard
-                key={lead.uuid}
-                lead={lead}
-                expanded={expandedLead === lead.uuid}
-                onToggle={() => toggleLead(lead.uuid)}
-              />
-            ))}
-          </div>
-
-          <div className='status-legend-inline'>
-            <span className='legend-item'><span className='legend-chip-letter'>E</span> Email</span>
-            <span className='legend-item'><span className='legend-chip-letter'>D</span> Database</span>
-            <span className='legend-item'><span className='legend-chip-letter'>B</span> Brevo</span>
-            <span className='legend-item'><span className='legend-dot success' /> Synced</span>
-            <span className='legend-item'><span className='legend-dot pending' /> Pending</span>
-            <span className='legend-item'><span className='legend-dot syncing' /> Syncing</span>
-            <span className='legend-item'><span className='legend-dot failed' /> Failed</span>
-            <span className='legend-item'><span className='legend-dot disabled' /> Disabled</span>
-          </div>
-        </>
+        <div className='lead-queue-list'>
+          {leads.map((lead) => (
+            <LeadCard
+              key={lead.uuid}
+              lead={lead}
+              expanded={expandedLead === lead.uuid}
+              onToggle={() => toggleLead(lead.uuid)}
+            />
+          ))}
+        </div>
       ) : (
         <div className='queue-empty'>
-          <p className='queue-empty-icon'>\u2713</p>
-          <p>All caught up</p>
-          <p className='queue-empty-sub'>New leads will appear here</p>
+          <p className='queue-empty-icon'>\u25cb</p>
+          <p>No leads yet</p>
+          <p className='queue-empty-sub'>Captured leads will appear here</p>
         </div>
       )}
 
@@ -179,7 +143,7 @@ export function SyncPage() {
             <span>Last Pull: <strong>{health.lastPullAt ? new Date(health.lastPullAt).toLocaleTimeString() : 'Never'}</strong></span>
           </div>
           {health.lastError ? (
-            <div className='sync-health-error'>⚠ {health.lastError}</div>
+            <div className='sync-health-error'>\u26a0 {health.lastError}</div>
           ) : null}
         </div>
       </article>
