@@ -94,11 +94,16 @@ function setSyncHealth(patch: Partial<SyncHealth>) {
 async function registerDevice() {
 	if (deviceRegistered || !navigator.onLine) return;
 
-	await api.post('/device/register', {
-		deviceIdentifier: getDeviceId(),
-		eventId: 1
-	});
-	deviceRegistered = true;
+	try {
+		await api.post('/device/register', {
+			deviceIdentifier: getDeviceId(),
+			eventId: 1
+		});
+		deviceRegistered = true;
+	} catch {
+		// Keep sync flow alive even if registration is temporarily unavailable.
+		deviceRegistered = false;
+	}
 }
 
 function getSyncCursor(): string | null {
@@ -186,7 +191,7 @@ export async function syncNow() {
 			lastSuccessAt: new Date().toISOString(),
 			lastError: null
 		});
-	} catch {
+	} catch (error) {
 		const queued = await db.leads.syncingList();
 		await db.leads.bulkPut(
 			queued.map((l: LocalLead) => ({
@@ -198,7 +203,9 @@ export async function syncNow() {
 			}))
 		);
 		setSyncHealth({
-			lastError: 'Sync failed. Check network or API health endpoints.'
+			lastError: error instanceof Error
+				? error.message
+				: 'Sync failed. Check network or API health endpoints.'
 		});
 	} finally {
 		running = false;

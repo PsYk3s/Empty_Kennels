@@ -15,6 +15,7 @@ const CONFIG = {
 };
 
 const pool = new Pool({ connectionString: CONFIG.databaseUrl });
+let schemaReadyPromise = null;
 
 const transporter = nodemailer.createTransport({
   host: CONFIG.smtp.host,
@@ -105,6 +106,91 @@ function dbConfigErrorForRequest(req) {
   return null;
 }
 
+async function ensureSchema() {
+  if (schemaReadyPromise) {
+    return schemaReadyPromise;
+  }
+
+  schemaReadyPromise = (async () => {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS events (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        starts_at TIMESTAMP,
+        ends_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS suppliers (
+        id SERIAL PRIMARY KEY,
+        supplier_name TEXT NOT NULL,
+        supplier_email TEXT NOT NULL,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS catalogues (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        file_url TEXT NOT NULL,
+        version INTEGER DEFAULT 1,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS devices (
+        id SERIAL PRIMARY KEY,
+        device_identifier TEXT UNIQUE NOT NULL,
+        event_id INTEGER REFERENCES events(id),
+        last_seen_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS leads (
+        id SERIAL PRIMARY KEY,
+        uuid TEXT UNIQUE NOT NULL,
+        first_name TEXT NOT NULL,
+        last_name TEXT NOT NULL,
+        company TEXT,
+        email TEXT NOT NULL,
+        phone TEXT,
+        interest_area TEXT,
+        notes TEXT,
+        event_id INTEGER REFERENCES events(id),
+        created_at TIMESTAMP NOT NULL,
+        updated_at TIMESTAMP,
+        last_synced_at TIMESTAMP,
+        sync_status TEXT,
+        email_sent_status TEXT,
+        brevo_sync_status TEXT
+      );
+    `);
+
+    await pool.query(`
+      INSERT INTO events (name)
+      SELECT 'Trade Show 2026'
+      WHERE NOT EXISTS (SELECT 1 FROM events);
+    `);
+
+    await pool.query(`
+      INSERT INTO suppliers (supplier_name, supplier_email, is_active)
+      SELECT 'Supplier A', 'a@supplier.com', TRUE
+      WHERE NOT EXISTS (SELECT 1 FROM suppliers WHERE supplier_email = 'a@supplier.com');
+    `);
+
+    await pool.query(`
+      INSERT INTO suppliers (supplier_name, supplier_email, is_active)
+      SELECT 'Supplier B', 'b@supplier.com', TRUE
+      WHERE NOT EXISTS (SELECT 1 FROM suppliers WHERE supplier_email = 'b@supplier.com');
+    `);
+  })().catch((error) => {
+    schemaReadyPromise = null;
+    throw error;
+  });
+
+  return schemaReadyPromise;
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
@@ -120,6 +206,13 @@ module.exports = async function handler(req, res) {
   const dbConfigError = dbConfigErrorForRequest(req);
 
   try {
+    if (route !== '/health/smtp') {
+      if (dbConfigError) {
+        return json(res, 500, { error: dbConfigError });
+      }
+      await ensureSchema();
+    }
+
     if (req.method === 'GET' && route === '/health') {
       return json(res, 200, {
         ok: true,
