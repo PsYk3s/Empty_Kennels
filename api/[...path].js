@@ -2,7 +2,7 @@ const { Pool } = require('pg');
 const nodemailer = require('nodemailer');
 
 const CONFIG = {
-  databaseUrl: 'postgresql://postgres:postgres@localhost:5432/pb_app',
+  databaseUrl: 'postgresql://neondb_owner:npg_zAL9MYsc2GXg@ep-withered-tree-aqrdxlrg-pooler.c-8.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require',
   adminEmail: 'warrenb@pienaarbros.co.za',
   smtp: {
     host: 'smtp-relay.brevo.com',
@@ -93,6 +93,18 @@ function mapRowToLead(row) {
   };
 }
 
+function isVercelHost(req) {
+  const host = String((req && req.headers && req.headers.host) || '').toLowerCase();
+  return host.includes('vercel.app') || host.includes('.now.sh');
+}
+
+function dbConfigErrorForRequest(req) {
+  if (isVercelHost(req) && CONFIG.databaseUrl.includes('localhost')) {
+    return 'Database is set to localhost. For Vercel deployment, set CONFIG.databaseUrl in api/[...path].js to a hosted Postgres connection string.';
+  }
+  return null;
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
@@ -105,10 +117,24 @@ module.exports = async function handler(req, res) {
   const partsRaw = req.query.path;
   const parts = Array.isArray(partsRaw) ? partsRaw : (partsRaw ? [partsRaw] : []);
   const route = `/${parts.join('/')}`;
+  const dbConfigError = dbConfigErrorForRequest(req);
 
   try {
     if (req.method === 'GET' && route === '/health') {
-      return json(res, 200, { ok: true });
+      return json(res, 200, {
+        ok: true,
+        dbConfigured: !dbConfigError,
+        dbMessage: dbConfigError || 'Database configuration looks valid.'
+      });
+    }
+
+    if (req.method === 'GET' && route === '/health/db') {
+      if (dbConfigError) {
+        return json(res, 500, { ok: false, message: dbConfigError });
+      }
+
+      await pool.query('SELECT 1');
+      return json(res, 200, { ok: true, message: 'Database connection is healthy' });
     }
 
     if (req.method === 'GET' && route === '/health/smtp') {
@@ -117,21 +143,33 @@ module.exports = async function handler(req, res) {
     }
 
     if (req.method === 'GET' && route === '/suppliers') {
+      if (dbConfigError) {
+        return json(res, 500, { error: dbConfigError });
+      }
       const result = await pool.query('SELECT * FROM suppliers WHERE is_active=true');
       return json(res, 200, result.rows);
     }
 
     if (req.method === 'GET' && route === '/catalogues') {
+      if (dbConfigError) {
+        return json(res, 500, { error: dbConfigError });
+      }
       const result = await pool.query('SELECT * FROM catalogues WHERE is_active=true');
       return json(res, 200, result.rows);
     }
 
     if (req.method === 'GET' && route === '/sync/status') {
+      if (dbConfigError) {
+        return json(res, 500, { error: dbConfigError });
+      }
       const result = await pool.query("SELECT COUNT(*) FILTER (WHERE sync_status!='synced') AS pending, MAX(updated_at) AS last_sync FROM leads");
       return json(res, 200, result.rows[0] || { pending: 0, last_sync: null });
     }
 
     if (req.method === 'GET' && route === '/leads/changes') {
+      if (dbConfigError) {
+        return json(res, 500, { error: dbConfigError });
+      }
       const since = typeof req.query.since === 'string' ? req.query.since : null;
       const parsedLimit = Number(req.query.limit || 200);
       const limit = Number.isFinite(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 500) : 200;
@@ -157,6 +195,9 @@ module.exports = async function handler(req, res) {
     }
 
     if (req.method === 'POST' && route === '/device/register') {
+      if (dbConfigError) {
+        return json(res, 500, { error: dbConfigError });
+      }
       const body = parseBody(req);
       const deviceIdentifier = String(body.deviceIdentifier || '').trim();
       const eventId = Number(body.eventId || 1);
@@ -172,6 +213,9 @@ module.exports = async function handler(req, res) {
     }
 
     if (req.method === 'POST' && route === '/leads/email-admin-list') {
+      if (dbConfigError) {
+        return json(res, 500, { error: dbConfigError });
+      }
       const rows = (
         await pool.query('SELECT first_name, last_name, email, phone, company, interest_area, created_at FROM leads ORDER BY created_at DESC')
       ).rows;
@@ -180,6 +224,9 @@ module.exports = async function handler(req, res) {
     }
 
     if (req.method === 'POST' && route === '/leads/batch') {
+      if (dbConfigError) {
+        return json(res, 500, { error: dbConfigError });
+      }
       const body = parseBody(req);
       const leads = Array.isArray(body.leads) ? body.leads : [];
       const result = [];

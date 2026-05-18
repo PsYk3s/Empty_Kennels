@@ -23,16 +23,23 @@ async function fetchWithErrorHandling(
       ...options,
     });
 
+    const contentType = response.headers.get('content-type') || '';
+    const isJson = contentType.includes('application/json');
+    const body = isJson ? await response.json().catch(() => ({})) : await response.text().catch(() => '');
+
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
       throw new ApiError(
         response.status,
         url,
-        errorData.error || `HTTP ${response.status}`
+        (isJson && typeof body === 'object' && body && 'error' in body
+          ? String((body as { error?: string }).error)
+          : typeof body === 'string' && body.trim()
+            ? body
+            : `HTTP ${response.status}`)
       );
     }
 
-    return response.json();
+    return body;
   } catch (error) {
     if (error instanceof ApiError) throw error;
     throw new Error(`Network error: ${error instanceof Error ? error.message : 'Unknown'}`);
