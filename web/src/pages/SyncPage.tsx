@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { db } from '../storage/db';
 import { api } from '../api/index';
-import { syncNow } from '../sync/syncManager';
+import { getDeviceId, getSyncHealth, syncNow, type SyncHealth } from '../sync/syncManager';
 
 type SMTPStatus = { ok: boolean; message: string } | null;
 
@@ -12,10 +12,20 @@ export function SyncPage() {
   const [notice, setNotice] = useState('');
   const [smtpStatus, setSmtpStatus] = useState<SMTPStatus>(null);
   const [loadingSmtp, setLoadingSmtp] = useState(true);
+  const [syncHealth, setSyncHealth] = useState<SyncHealth>(getSyncHealth());
 
   useEffect(() => {
     loadLeads();
     checkSmtp();
+
+    const onHealth = () => setSyncHealth(getSyncHealth());
+    window.addEventListener('pb-sync-health', onHealth);
+    const timer = window.setInterval(onHealth, 5000);
+
+    return () => {
+      window.removeEventListener('pb-sync-health', onHealth);
+      window.clearInterval(timer);
+    };
   }, []);
 
   const loadLeads = async () => {
@@ -43,6 +53,7 @@ export function SyncPage() {
     setNotice('');
     await syncNow();
     setSyncing(false);
+    setSyncHealth(getSyncHealth());
     await loadLeads();
   };
 
@@ -77,6 +88,33 @@ export function SyncPage() {
           {smtpStatus.ok ? '✓' : '⚠'} {smtpStatus.message}
         </div>
       )}
+
+      <div className='sync-health'>
+        <div className='sync-health-title'>Sync Health</div>
+        <div className='sync-health-row'>
+          <span>Tablet ID</span>
+          <strong>{getDeviceId()}</strong>
+        </div>
+        <div className='sync-health-row'>
+          <span>Last Run</span>
+          <strong>{syncHealth.lastRunAt ? new Date(syncHealth.lastRunAt).toLocaleString() : 'Never'}</strong>
+        </div>
+        <div className='sync-health-row'>
+          <span>Last Push</span>
+          <strong>{syncHealth.lastPushAt ? new Date(syncHealth.lastPushAt).toLocaleString() : 'Never'}</strong>
+        </div>
+        <div className='sync-health-row'>
+          <span>Last Pull</span>
+          <strong>{syncHealth.lastPullAt ? new Date(syncHealth.lastPullAt).toLocaleString() : 'Never'}</strong>
+        </div>
+        <div className='sync-health-row'>
+          <span>Last Success</span>
+          <strong>{syncHealth.lastSuccessAt ? new Date(syncHealth.lastSuccessAt).toLocaleString() : 'Never'}</strong>
+        </div>
+        {syncHealth.lastError ? (
+          <div className='sync-health-error'>⚠ {syncHealth.lastError}</div>
+        ) : null}
+      </div>
 
       {leads.length > 0 ? (
         <>

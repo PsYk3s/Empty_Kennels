@@ -521,6 +521,45 @@ textarea {
 	color: #ff5757;
 }
 
+.sync-health {
+	margin-bottom: 1rem;
+	padding: 0.85rem;
+	background: rgba(42, 58, 50, 0.3);
+	border: 1px solid var(--border-dark);
+	border-radius: 10px;
+	font-size: 0.85rem;
+}
+
+.sync-health-title {
+	font-weight: 700;
+	color: var(--accent-green);
+	margin-bottom: 0.5rem;
+	font-size: 0.9rem;
+}
+
+.sync-health-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 0.8rem;
+	margin-bottom: 0.35rem;
+	color: var(--light-text);
+}
+
+.sync-health-row strong {
+	color: #e0e8e8;
+	font-weight: 600;
+	font-size: 0.82rem;
+	word-break: break-word;
+	text-align: right;
+}
+
+.sync-health-error {
+	margin-top: 0.55rem;
+	color: #ff5757;
+	font-weight: 700;
+}
+
 .status-legend {
 	margin: 1rem 0;
 	padding: 0.8rem;

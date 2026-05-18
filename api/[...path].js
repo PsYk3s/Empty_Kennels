@@ -268,6 +268,7 @@ module.exports = async function handler(req, res) {
 
           const row = inserted.rows[0];
           let emailSentStatus = row.email_sent_status || 'pending';
+          let emailError = null;
 
           try {
             if (emailSentStatus !== 'sent') {
@@ -279,8 +280,9 @@ module.exports = async function handler(req, res) {
               await sendLeadEmail({ lead: row, suppliers: supplierRows, eventName: `Event ${Number(lead.eventId || 1)}` });
               emailSentStatus = 'sent';
             }
-          } catch {
+          } catch (emailSendError) {
             emailSentStatus = 'failed';
+            emailError = emailSendError instanceof Error ? emailSendError.message : 'Email send failed';
           }
 
           await pool.query(
@@ -292,14 +294,16 @@ module.exports = async function handler(req, res) {
             uuid: lead.uuid,
             syncStatus: 'synced',
             emailSentStatus,
-            brevoSyncStatus: 'disabled'
+            brevoSyncStatus: 'disabled',
+            error: emailError
           });
-        } catch {
+        } catch (leadError) {
           result.push({
             uuid: lead.uuid,
             syncStatus: 'failed',
             emailSentStatus: 'failed',
-            brevoSyncStatus: 'disabled'
+            brevoSyncStatus: 'disabled',
+            error: leadError instanceof Error ? leadError.message : 'Lead sync failed'
           });
         }
       }
