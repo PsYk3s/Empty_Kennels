@@ -49,6 +49,15 @@ const SYNC_INTERVAL_MS = 15000;
 const HEALTH_EVENT = 'pb-sync-health';
 const CYCLE_EVENT = 'pb-sync-cycle';
 
+const SYNC_STATE_FIELDS = [
+	'syncStatus',
+	'emailSentStatus',
+	'brevoSyncStatus',
+	'emailStatusMessage',
+	'brevoStatusMessage',
+	'databaseStatusMessage'
+] as const;
+
 let running = false;
 let loopStarted = false;
 let intervalId: number | null = null;
@@ -126,6 +135,14 @@ function setSyncCursor(value: string | null) {
 	localStorage.setItem(SYNC_CURSOR_KEY, value);
 }
 
+function hasSyncStateChanged(before: LocalLead | null | undefined, after: LocalLead) {
+	return SYNC_STATE_FIELDS.some((field) => {
+		const beforeValue = before?.[field] ?? null;
+		const afterValue = after[field] ?? null;
+		return beforeValue !== afterValue;
+	});
+}
+
 async function pushPendingLeads(options: SyncOptions = {}) {
 	const baseLeads = await db.leads.pendingList(25);
 	const disabledBrevoLeads = options.retryDisabledBrevo ? await db.leads.brevoDisabledList(25) : [];
@@ -144,19 +161,17 @@ async function pushPendingLeads(options: SyncOptions = {}) {
 	const leads = Array.from(leadMap.values()).slice(0, 25);
 	if (!leads.length) {
 		setSyncHealth({ lastPushAt: new Date().toISOString() });
-		return;
+		return 0;
 	}
 
-	for (const lead of leads) {
-		const syncingAt = new Date().toISOString();
-		await db.leads.put({ ...lead, syncStatus: 'syncing', updatedAt: syncingAt });
+	let changedCount = 0;
 
+	for (const lead of leads) {
 		try {
 			const resp = await api.post<{ synced?: SyncItem[] }>('/leads/batch', { leads: [lead] });
 			const remote = (resp.synced || [])[0];
 			const now = new Date().toISOString();
-
-			await db.leads.put({
+			const nextLead = {
 				...lead,
 				syncStatus: remote?.syncStatus || 'failed',
 				emailSentStatus: remote?.emailSentStatus || lead.emailSentStatus || 'pending',
@@ -171,23 +186,38 @@ async function pushPendingLeads(options: SyncOptions = {}) {
 						? 'Synced to Brevo contact list.'
 						: remote?.brevoSyncStatus === 'disabled'
 							? 'Brevo integration is disabled on the API.'
-							: undefined),
-				lastSyncedAt: now,
-				updatedAt: now
-			});
+							: undefined)
+			} as LocalLead;
+
+			if (hasSyncStateChanged(lead as LocalLead, nextLead)) {
+				await db.leads.put({
+					...nextLead,
+					lastSyncedAt: now,
+					updatedAt: now
+				});
+				changedCount += 1;
+			}
 		} catch (error) {
-			await db.leads.put({
+			const nextLead = {
 				...lead,
 				syncStatus: 'failed',
 				emailSentStatus: lead.emailSentStatus || 'pending',
 				brevoSyncStatus: lead.brevoSyncStatus || 'disabled',
-				databaseStatusMessage: error instanceof Error ? error.message : 'Could not reach API during sync.',
-				updatedAt: new Date().toISOString()
-			});
+				databaseStatusMessage: error instanceof Error ? error.message : 'Could not reach API during sync.'
+			} as LocalLead;
+
+			if (hasSyncStateChanged(lead as LocalLead, nextLead)) {
+				await db.leads.put({
+					...nextLead,
+					updatedAt: new Date().toISOString()
+				});
+				changedCount += 1;
+			}
 		}
 	}
 
 	setSyncHealth({ lastPushAt: new Date().toISOString() });
+	return changedCount;
 }
 
 async function pullRemoteChanges() {
@@ -195,6 +225,7 @@ async function pullRemoteChanges() {
 	const query = cursor ? `?since=${encodeURIComponent(cursor)}` : '';
 	const response = await api.get<ChangesResponse>(`/leads/changes${query}`);
 	const remoteLeads = response.leads || [];
+	let changedCount = 0;
 
 	for (const remote of remoteLeads) {
 		const local = await db.leads.get(remote.uuid);
@@ -207,7 +238,7 @@ async function pullRemoteChanges() {
 			continue;
 		}
 
-		await db.leads.put({
+		const nextLead = {
 			...remote,
 			syncStatus: remote.syncStatus || 'synced',
 			emailSentStatus: remote.emailSentStatus || 'pending',
@@ -216,7 +247,12 @@ async function pullRemoteChanges() {
 			brevoStatusMessage: (remote as LocalLead).brevoStatusMessage,
 			databaseStatusMessage: (remote as LocalLead).databaseStatusMessage,
 			updatedAt: remote.updatedAt || remote.createdAt || new Date().toISOString()
-		});
+		} as LocalLead;
+
+		if (!local || hasSyncStateChanged(local as LocalLead, nextLead)) {
+			await db.leads.put(nextLead);
+			changedCount += 1;
+		}
 	}
 
 	if (response.nextCursor) {
@@ -224,6 +260,7 @@ async function pullRemoteChanges() {
 	}
 
 	setSyncHealth({ lastPullAt: new Date().toISOString() });
+	return changedCount;
 }
 
 export async function syncNow(options: SyncOptions = {}) {
@@ -233,22 +270,25 @@ export async function syncNow(options: SyncOptions = {}) {
 			lastRunAt: new Date().toISOString(),
 			lastError: 'Offline. Leads are queued and will retry when back online.'
 		});
-		window.dispatchEvent(new CustomEvent(CYCLE_EVENT));
+		window.dispatchEvent(new CustomEvent(CYCLE_EVENT, { detail: { changed: false } }));
 		return;
 	}
 
 	running = true;
+	let hasChanges = false;
 	setSyncHealth({ lastRunAt: new Date().toISOString() });
 	try {
 		await registerDevice();
-		await pushPendingLeads(options);
-		await pullRemoteChanges();
+		const pushChanges = await pushPendingLeads(options);
+		const pullChanges = await pullRemoteChanges();
+		hasChanges = (pushChanges + pullChanges) > 0;
 		setSyncHealth({
 			lastSuccessAt: new Date().toISOString(),
 			lastError: null
 		});
 	} catch (error) {
 		const queued = await db.leads.syncingList();
+		hasChanges = queued.length > 0;
 		await db.leads.bulkPut(
 			queued.map((l: LocalLead) => ({
 				...l,
@@ -265,7 +305,7 @@ export async function syncNow(options: SyncOptions = {}) {
 		});
 	} finally {
 		running = false;
-		window.dispatchEvent(new CustomEvent(CYCLE_EVENT));
+		window.dispatchEvent(new CustomEvent(CYCLE_EVENT, { detail: { changed: hasChanges } }));
 	}
 }
 

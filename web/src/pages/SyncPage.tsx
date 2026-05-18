@@ -4,6 +4,7 @@ import { api } from '../api/index';
 import { getDeviceId, getSyncHealth, syncNow, type SyncHealth } from '../sync/syncManager';
 
 type SMTPStatus = { ok: boolean; message: string } | null;
+type SyncCycleDetail = { changed?: boolean };
 
 export function SyncPage() {
   const [leads, setLeads] = useState<any[]>([]);
@@ -22,8 +23,11 @@ export function SyncPage() {
     checkSmtp();
 
     const onHealth = () => setSyncHealth(getSyncHealth());
-    const onCycle = () => {
-      void loadLeads();
+    const onCycle = (event: Event) => {
+      const detail = (event as CustomEvent<SyncCycleDetail>).detail;
+      if (detail?.changed !== false) {
+        void loadLeads();
+      }
       setSyncHealth(getSyncHealth());
     };
     const onOnline = () => setOnline(true);

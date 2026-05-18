@@ -20,7 +20,7 @@ export const APP_CONFIG = {
   },
   brevo: {
     enabled: parseBoolean(process.env.BREVO_ENABLED, false),
-    apiKey: process.env.BREVO_API_KEY || process.env.BREVO_KEY || '',
+    apiKey: String(process.env.BREVO_API_KEY || process.env.BREVO_KEY || '').trim(),
     listId: Number(process.env.BREVO_LIST_ID || 26)
   }
 };

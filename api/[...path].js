@@ -20,7 +20,7 @@ const CONFIG = {
   },
   brevo: {
     enabled: String(process.env.BREVO_ENABLED || 'true').toLowerCase() !== 'false',
-    apiKey: process.env.BREVO_API_KEY || process.env.BREVO_KEY || '',
+    apiKey: String(process.env.BREVO_API_KEY || process.env.BREVO_KEY || '').trim(),
     listId: Number(process.env.BREVO_LIST_ID || 26)
   }
 };
@@ -67,7 +67,7 @@ function smtpErrorMessage(error) {
 function brevoErrorMessage(error) {
   const text = error instanceof Error ? error.message : String(error || 'Brevo request failed');
   if (/401|403|api[- ]?key|unauthor/i.test(text)) {
-    return 'Brevo authentication failed. Check BREVO_API_KEY in your environment variables.';
+    return 'Brevo authentication failed. Use BREVO_API_KEY (API v3 key, usually starts with xkeysib-) and not SMTP credentials.';
   }
   return `Brevo error: ${text}`;
 }
@@ -78,6 +78,9 @@ async function syncLeadToBrevoList(lead) {
   }
   if (!CONFIG.brevo.apiKey || !CONFIG.brevo.listId) {
     throw new Error('Brevo is enabled but BREVO_API_KEY or BREVO_LIST_ID is missing');
+  }
+  if (!CONFIG.brevo.apiKey.startsWith('xkeysib-')) {
+    throw new Error('Invalid BREVO_API_KEY format. Expected Brevo API v3 key starting with xkeysib- (not SMTP key/password).');
   }
 
   const response = await fetch('https://api.brevo.com/v3/contacts', {
@@ -102,7 +105,7 @@ async function syncLeadToBrevoList(lead) {
 
   if (!response.ok) {
     const text = await response.text().catch(() => 'Brevo request failed');
-    throw new Error(text || `HTTP ${response.status}`);
+    throw new Error(`${text || `HTTP ${response.status}`}. Verify BREVO_API_KEY, BREVO_LIST_ID, and contacts permissions.`);
   }
 
   return { status: 'synced', error: null };
