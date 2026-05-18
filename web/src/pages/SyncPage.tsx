@@ -8,6 +8,7 @@ type SMTPStatus = { ok: boolean; message: string } | null;
 export function SyncPage() {
   const [leads, setLeads] = useState<any[]>([]);
   const [expandedLead, setExpandedLead] = useState<string | null>(null);
+  const [expandedHealth, setExpandedHealth] = useState(false);
   const [online, setOnline] = useState(navigator.onLine);
   const [syncing, setSyncing] = useState(false);
   const [emailing, setEmailing] = useState(false);
@@ -117,6 +118,17 @@ export function SyncPage() {
     return Number.isNaN(date.getTime()) ? 'Never' : date.toLocaleString();
   };
 
+  const getSyncStatusDisplay = () => {
+    if (syncing) return { status: 'Syncing...', icon: '⟳', color: 'syncing' };
+    if (syncHealth.lastError) return { status: 'Sync failed', icon: '⚠', color: 'failed' };
+    if (syncHealth.lastSuccessAt) {
+      const mins = Math.round((Date.now() - new Date(syncHealth.lastSuccessAt).getTime()) / 60000);
+      const timeAgo = mins < 1 ? 'just now' : mins < 60 ? `${mins}m ago` : `${Math.round(mins / 60)}h ago`;
+      return { status: `Synced ${timeAgo}`, icon: '✓', color: 'success' };
+    }
+    return { status: 'No syncs yet', icon: '-', color: 'pending' };
+  };
+
   return (
     <section className='screen'>
       <div className='screen-head'>
@@ -131,32 +143,38 @@ export function SyncPage() {
         <div className='status-message error'>Offline mode active. Leads are saved locally and will auto-retry sync/email when online.</div>
       ) : null}
 
-      <div className='sync-health'>
-        <div className='sync-health-title'>Sync Health</div>
-        <div className='sync-health-row'>
-          <span>Tablet ID</span>
-          <strong>{getDeviceId()}</strong>
+      {(() => {
+        const display = getSyncStatusDisplay();
+        return (
+          <div className={`sync-status-banner ${display.color}`}>
+            <span className={`sync-status-icon ${display.color}`}>{display.icon}</span>
+            <span className='sync-status-text'>{display.status}</span>
+          </div>
+        );
+      })()}
+
+      <article className={`sync-health-accordion ${expandedHealth ? 'open' : ''}`}>
+        <button
+          type='button'
+          className='sync-health-toggle'
+          onClick={() => setExpandedHealth(!expandedHealth)}
+          aria-expanded={expandedHealth}
+        >
+          <span className='sync-health-title'>Sync Health</span>
+          <span className='accordion-chevron'>{expandedHealth ? '▾' : '▸'}</span>
+        </button>
+        <div className='sync-health-details'>
+          <div className='health-inline'>
+            <span>ID: <strong>{getDeviceId()}</strong></span>
+            <span>Last Run: <strong>{syncHealth.lastRunAt ? new Date(syncHealth.lastRunAt).toLocaleTimeString() : 'Never'}</strong></span>
+            <span>Last Push: <strong>{syncHealth.lastPushAt ? new Date(syncHealth.lastPushAt).toLocaleTimeString() : 'Never'}</strong></span>
+            <span>Last Pull: <strong>{syncHealth.lastPullAt ? new Date(syncHealth.lastPullAt).toLocaleTimeString() : 'Never'}</strong></span>
+          </div>
+          {syncHealth.lastError ? (
+            <div className='sync-health-error'>⚠ {syncHealth.lastError}</div>
+          ) : null}
         </div>
-        <div className='sync-health-row'>
-          <span>Last Run</span>
-          <strong>{syncHealth.lastRunAt ? new Date(syncHealth.lastRunAt).toLocaleString() : 'Never'}</strong>
-        </div>
-        <div className='sync-health-row'>
-          <span>Last Push</span>
-          <strong>{syncHealth.lastPushAt ? new Date(syncHealth.lastPushAt).toLocaleString() : 'Never'}</strong>
-        </div>
-        <div className='sync-health-row'>
-          <span>Last Pull</span>
-          <strong>{syncHealth.lastPullAt ? new Date(syncHealth.lastPullAt).toLocaleString() : 'Never'}</strong>
-        </div>
-        <div className='sync-health-row'>
-          <span>Last Success</span>
-          <strong>{syncHealth.lastSuccessAt ? new Date(syncHealth.lastSuccessAt).toLocaleString() : 'Never'}</strong>
-        </div>
-        {syncHealth.lastError ? (
-          <div className='sync-health-error'>⚠ {syncHealth.lastError}</div>
-        ) : null}
-      </div>
+      </article>
 
       {leads.length > 0 ? (
         <>
@@ -170,40 +188,42 @@ export function SyncPage() {
                   aria-expanded={expandedLead === lead.uuid}
                   aria-controls={`lead-${lead.uuid}`}
                 >
-                  <div className='queue-item-header'>
-                    <strong>{lead.firstName} {lead.lastName}</strong>
-                    <span className='queue-chevron' aria-hidden='true'>{expandedLead === lead.uuid ? '▾' : '▸'}</span>
-                  </div>
-                  <p className='queue-item-meta'>{lead.email || 'No email'}</p>
-                  <div className='status-icons' role='list' aria-label='Lead sync status'>
-                    <span
-                      className='status-chip'
-                      title={`Email: ${statusLabel(lead.emailSentStatus)}`}
-                      aria-label={`Email status ${statusLabel(lead.emailSentStatus)}`}
-                    >
-                      E
-                      <span className={`status-dot ${iconForStatus(lead.emailSentStatus)}`} />
-                    </span>
-                    <span
-                      className='status-chip'
-                      title={`Database: ${statusLabel(lead.syncStatus)}`}
-                      aria-label={`Database status ${statusLabel(lead.syncStatus)}`}
-                    >
-                      D
-                      <span className={`status-dot ${iconForStatus(lead.syncStatus)}`} />
-                    </span>
-                    <span
-                      className='status-chip'
-                      title={`Brevo: ${statusLabel(lead.brevoSyncStatus)}`}
-                      aria-label={`Brevo status ${statusLabel(lead.brevoSyncStatus)}`}
-                    >
-                      B
-                      <span className={`status-dot ${iconForStatus(lead.brevoSyncStatus)}`} />
-                    </span>
+                  <div className='queue-item-collapsed'>
+                    <div className='queue-item-header'>
+                      <strong>{lead.firstName} {lead.lastName}</strong>
+                      <span className='queue-chevron' aria-hidden='true'>{expandedLead === lead.uuid ? '▾' : '▸'}</span>
+                    </div>
+                    <div className='status-icons' role='list' aria-label='Lead sync status'>
+                      <span
+                        className='status-chip'
+                        title={`Email: ${statusLabel(lead.emailSentStatus)}`}
+                        aria-label={`Email status ${statusLabel(lead.emailSentStatus)}`}
+                      >
+                        E
+                        <span className={`status-dot ${iconForStatus(lead.emailSentStatus)}`} />
+                      </span>
+                      <span
+                        className='status-chip'
+                        title={`Database: ${statusLabel(lead.syncStatus)}`}
+                        aria-label={`Database status ${statusLabel(lead.syncStatus)}`}
+                      >
+                        D
+                        <span className={`status-dot ${iconForStatus(lead.syncStatus)}`} />
+                      </span>
+                      <span
+                        className='status-chip'
+                        title={`Brevo: ${statusLabel(lead.brevoSyncStatus)}`}
+                        aria-label={`Brevo status ${statusLabel(lead.brevoSyncStatus)}`}
+                      >
+                        B
+                        <span className={`status-dot ${iconForStatus(lead.brevoSyncStatus)}`} />
+                      </span>
+                    </div>
                   </div>
                 </button>
 
                 <div id={`lead-${lead.uuid}`} className='queue-item-details'>
+                  <p className='queue-item-meta'>{lead.email || 'No email'}</p>
                   <div className='queue-detail-inline'>
                     <span>Phone: <strong>{lead.phone || 'None'}</strong></span>
                     <span>Company: <strong>{lead.company || 'None'}</strong></span>
@@ -218,28 +238,12 @@ export function SyncPage() {
             ))}
           </div>
 
-          <div className='status-legend'>
-            <div className='legend-title'>Status Legend</div>
-            <div className='legend-row'>
-              <span className='legend-dot success' />
-              <span className='legend-text'>Synced / Sent</span>
-            </div>
-            <div className='legend-row'>
-              <span className='legend-dot pending' />
-              <span className='legend-text'>Pending</span>
-            </div>
-            <div className='legend-row'>
-              <span className='legend-dot syncing' />
-              <span className='legend-text'>Syncing now</span>
-            </div>
-            <div className='legend-row'>
-              <span className='legend-dot failed' />
-              <span className='legend-text'>Failed</span>
-            </div>
-            <div className='legend-row'>
-              <span className='legend-dot disabled' />
-              <span className='legend-text'>Disabled</span>
-            </div>
+          <div className='status-legend-inline'>
+            <span className='legend-item'><span className='legend-dot success' /> Synced</span>
+            <span className='legend-item'><span className='legend-dot pending' /> Pending</span>
+            <span className='legend-item'><span className='legend-dot syncing' /> Syncing</span>
+            <span className='legend-item'><span className='legend-dot failed' /> Failed</span>
+            <span className='legend-item'><span className='legend-dot disabled' /> Disabled</span>
           </div>
         </>
       ) : (
