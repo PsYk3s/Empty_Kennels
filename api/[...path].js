@@ -230,7 +230,7 @@ module.exports = async function handler(req, res) {
       return json(res, 200, { ok: true, message: 'Database connection is healthy' });
     }
 
-    if (req.method === 'GET' && route === '/health/smtp') {
+    if ((req.method === 'GET' || req.method === 'POST') && route === '/health/smtp') {
       await transporter.verify();
       return json(res, 200, { ok: true, message: 'SMTP credentials are valid' });
     }

@@ -37,11 +37,20 @@ export function SyncPage() {
     setLoadingSmtp(true);
     try {
       const result = await api.get<SMTPStatus>('/health/smtp');
-      setSmtpStatus(result);
+      if (result && result.message) {
+        setSmtpStatus(result);
+      } else {
+        setSmtpStatus(null);
+      }
     } catch (e) {
+      const message = e instanceof Error ? e.message : 'Could not verify SMTP connection';
+      if (!message || message.includes('HTTP 405')) {
+        setSmtpStatus(null);
+        return;
+      }
       setSmtpStatus({
         ok: false,
-        message: e instanceof Error ? e.message : 'Could not verify SMTP connection'
+        message
       });
     } finally {
       setLoadingSmtp(false);
@@ -63,8 +72,8 @@ export function SyncPage() {
     try {
       const result = await api.post<{ count: number }>('/leads/email-admin-list', {});
       setNotice(`Lead list emailed to admin (${result.count} leads).`);
-    } catch {
-      setNotice('Could not email lead list. Check server SMTP settings.');
+    } catch (e) {
+      setNotice(e instanceof Error ? e.message : 'Could not email lead list.');
     } finally {
       setEmailing(false);
     }
@@ -159,26 +168,6 @@ export function SyncPage() {
               <span className='legend-text'>Disabled</span>
             </div>
           </div>
-
-          <div className='actions-row'>
-            <button
-              type='button'
-              className='secondary-button'
-              onClick={handleEmailList}
-              disabled={emailing}
-            >
-              {emailing ? 'Emailing...' : 'Email Full List to Admin'}
-            </button>
-            <button
-              type='button'
-              className='primary-button'
-              onClick={handleSync}
-              disabled={syncing}
-            >
-              {syncing ? 'Syncing...' : 'Sync Now'}
-            </button>
-          </div>
-          {notice ? <p className='feedback'>{notice}</p> : null}
         </>
       ) : (
         <div style={{ padding: '2rem', textAlign: 'center', color: '#999' }}>
@@ -186,6 +175,26 @@ export function SyncPage() {
           <p style={{ fontSize: '0.95rem' }}>New leads will appear here</p>
         </div>
       )}
+
+      <div className='actions-row'>
+        <button
+          type='button'
+          className='secondary-button'
+          onClick={handleEmailList}
+          disabled={emailing}
+        >
+          {emailing ? 'Emailing...' : 'Email Full List to Admin'}
+        </button>
+        <button
+          type='button'
+          className='primary-button'
+          onClick={handleSync}
+          disabled={syncing}
+        >
+          {syncing ? 'Syncing...' : 'Sync Now'}
+        </button>
+      </div>
+      {notice ? <p className='feedback'>{notice}</p> : null}
     </section>
   );
 }
