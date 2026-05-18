@@ -2,15 +2,10 @@
   "buildCommand": "npm run build -w web",
   "outputDirectory": "web/dist",
   "installCommand": "npm install",
-  "functions": {
-    "api/[...path].js": {
-      "runtime": "nodejs20.x"
-    }
-  },
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/api/[...path]?path=$1"
+      "destination": "/api/$1"
     },
     {
       "source": "/(.*)",
