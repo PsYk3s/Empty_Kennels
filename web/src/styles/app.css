@@ -147,8 +147,10 @@ body {
 .intro-screen {
 	display: grid;
 	gap: 1.2rem;
-	align-content: start;
+	align-content: center;
 	min-height: 300px;
+	justify-items: center;
+	text-align: center;
 }
 
 .intro-screen h2 {
@@ -239,46 +241,6 @@ body {
 	font-size: 0.95rem;
 	color: var(--light-text);
 	margin: 0.2rem 0 0;
-}
-
-.home-stats {
-	display: grid;
-	grid-template-columns: 1fr 1fr;
-	gap: 0.75rem;
-}
-
-.stat-card {
-	border: 1px solid var(--border-dark);
-	border-radius: 14px;
-	background: rgba(26, 47, 34, 0.5);
-	padding: 1rem;
-	display: grid;
-	gap: 0.2rem;
-	transition: border-color 0.2s;
-}
-
-.stat-card--alert {
-	border-color: rgba(255, 193, 7, 0.45);
-	background: rgba(255, 193, 7, 0.06);
-}
-
-.stat-value {
-	font-size: 2rem;
-	font-weight: 700;
-	color: var(--accent-green);
-	line-height: 1;
-}
-
-.stat-card--alert .stat-value {
-	color: #ffc107;
-}
-
-.stat-label {
-	font-size: 0.78rem;
-	color: var(--light-text);
-	text-transform: uppercase;
-	letter-spacing: 0.07em;
-	font-weight: 600;
 }
 
 .capture-grid {
@@ -553,7 +515,7 @@ textarea {
 }
 
 .queue-item-name {
-	font-size: 0.93rem;
+	font-size: 0.98rem;
 	font-weight: 700;
 	line-height: 1.2;
 	white-space: nowrap;
@@ -562,7 +524,7 @@ textarea {
 }
 
 .queue-item-sub {
-	font-size: 0.78rem;
+	font-size: 0.82rem;
 	color: var(--light-text);
 	white-space: nowrap;
 	overflow: hidden;
@@ -603,7 +565,7 @@ textarea {
 	display: inline-flex;
 	align-items: center;
 	gap: 0.3rem;
-	font-size: 0.68rem;
+	font-size: 0.66rem;
 	font-weight: 700;
 	letter-spacing: 0.04em;
 	color: var(--light-text);
@@ -612,7 +574,7 @@ textarea {
 	border-radius: 999px;
 	border: 1px solid var(--border-dark);
 	background: rgba(255, 255, 255, 0.02);
-	min-width: 40px;
+	min-width: 38px;
 	justify-content: center;
 }
 
@@ -1110,17 +1072,17 @@ textarea {
 	background: var(--light-green);
 	color: var(--accent-green);
 	text-decoration: none;
-	padding: 0.55rem 0.4rem 0.5rem;
+	padding: 0.4rem 0.35rem 0.38rem;
 	transition: all 0.25s ease;
 }
 
 .nav-icon {
-	font-size: 1.15rem;
+	font-size: 0.95rem;
 	line-height: 1;
 }
 
 .nav-label {
-	font-size: 0.68rem;
+	font-size: 0.62rem;
 	font-weight: 700;
 	letter-spacing: 0.04em;
 	text-transform: uppercase;

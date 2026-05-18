@@ -60,3 +60,14 @@ export function formatTs(value: string | undefined): string {
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString();
 }
+
+export function maskEmail(value: string | undefined): string {
+  if (!value) return 'No email';
+
+  const [localPart, domain] = value.split('@');
+  if (!localPart || !domain) return value;
+
+  const first = localPart.slice(0, 1) || '*';
+  const masked = '*'.repeat(Math.max(localPart.length - 1, 4));
+  return `${first}${masked}@${domain}`;
+}

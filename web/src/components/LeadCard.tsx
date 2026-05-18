@@ -1,5 +1,5 @@
 import type { Lead, LeadStatus } from '../types/lead';
-import { statusVariant, statusReason, formatTs } from '../types/lead';
+import { statusVariant, statusReason, formatTs, maskEmail } from '../types/lead';
 import { StatusChip } from './StatusChip';
 
 type Props = {
@@ -9,11 +9,13 @@ type Props = {
 };
 
 export function LeadCard({ lead, expanded, onToggle }: Props) {
-  const issues = [
+  const systems = [
     { type: 'email' as const, label: 'Email', status: lead.emailSentStatus, message: lead.emailStatusMessage },
     { type: 'database' as const, label: 'Database', status: lead.syncStatus, message: lead.databaseStatusMessage },
     { type: 'brevo' as const, label: 'Brevo', status: lead.brevoSyncStatus, message: lead.brevoStatusMessage },
-  ].filter(({ status }) => statusVariant(status) !== 'success');
+  ];
+
+  const issues = systems.filter(({ status }) => statusVariant(status) !== 'success');
 
   const hasIssues = issues.length > 0;
 
@@ -29,23 +31,19 @@ export function LeadCard({ lead, expanded, onToggle }: Props) {
         <div className='queue-item-header'>
           <div className='queue-item-identity'>
             <span className='queue-item-name'>{lead.firstName} {lead.lastName}</span>
-            <span className='queue-item-sub'>
-              {[lead.company, lead.interestArea].filter(Boolean).join(' · ') || lead.email || 'No details'}
-            </span>
+            <span className='queue-item-sub'>{maskEmail(lead.email)}</span>
           </div>
           <div className='queue-item-right'>
-            {hasIssues ? (
-              <div className='status-icons' role='list' aria-label='Sync issues'>
-                {issues.map(({ label, type, status }) => (
-                  <StatusChip
-                    key={type}
-                    letter={label[0]}
-                    status={status}
-                    label={label}
-                  />
-                ))}
-              </div>
-            ) : null}
+            <div className='status-icons' role='list' aria-label='Lead sync status'>
+              {systems.map(({ label, type, status }) => (
+                <StatusChip
+                  key={type}
+                  letter={label[0]}
+                  status={status}
+                  label={label}
+                />
+              ))}
+            </div>
             <span className={`queue-chevron${expanded ? ' open' : ''}`} aria-hidden='true' />
           </div>
         </div>
@@ -60,6 +58,7 @@ export function LeadCard({ lead, expanded, onToggle }: Props) {
             <a href={`tel:${lead.phone}`} className='contact-link'>{lead.phone}</a>
           ) : null}
           {lead.company ? <span className='contact-meta'>{lead.company}</span> : null}
+          {lead.interestArea ? <span className='contact-meta'>{lead.interestArea}</span> : null}
         </div>
 
         {lead.notes ? <p className='queue-item-notes'>{lead.notes}</p> : null}

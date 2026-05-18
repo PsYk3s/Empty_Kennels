@@ -1,18 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { db } from '../storage/db';
 
 export function HomePage() {
   const location = useLocation();
-  const [total, setTotal] = useState(0);
-  const [pending, setPending] = useState(0);
   const [showThanks, setShowThanks] = useState(false);
   const thanksTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    void db.leads.allList(1000).then((l) => setTotal(l.length));
-    void db.leads.pendingCount().then(setPending);
-  }, []);
 
   useEffect(() => {
     if (location.state?.saved) {
@@ -40,15 +32,9 @@ export function HomePage() {
         </div>
       ) : null}
 
-      <div className='home-stats'>
-        <div className='stat-card'>
-          <span className='stat-value'>{total}</span>
-          <span className='stat-label'>Total Leads</span>
-        </div>
-        <div className={`stat-card${pending > 0 ? ' stat-card--alert' : ''}`}>
-          <span className='stat-value'>{pending}</span>
-          <span className='stat-label'>Pending Sync</span>
-        </div>
+      <div className='home-hero'>
+        <h2>Lead Capture</h2>
+        <p className='home-sub'>Ready for the next visitor.</p>
       </div>
 
       <Link to='/lead' className='cta-button'>
