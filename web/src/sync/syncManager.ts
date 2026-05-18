@@ -32,6 +32,10 @@ export type SyncHealth = {
 	lastError: string | null;
 };
 
+type SyncOptions = {
+	retryDisabledBrevo?: boolean;
+};
+
 const SYNC_CURSOR_KEY = 'pb_sync_cursor_v1';
 const DEVICE_ID_KEY = 'pb_device_id_v1';
 const SYNC_HEALTH_KEY = 'pb_sync_health_v1';
@@ -116,8 +120,22 @@ function setSyncCursor(value: string | null) {
 	localStorage.setItem(SYNC_CURSOR_KEY, value);
 }
 
-async function pushPendingLeads() {
-	const leads = await db.leads.pendingList(25);
+async function pushPendingLeads(options: SyncOptions = {}) {
+	const baseLeads = await db.leads.pendingList(25);
+	const disabledBrevoLeads = options.retryDisabledBrevo ? await db.leads.brevoDisabledList(25) : [];
+	const leadMap = new Map<string, LocalLead>();
+
+	for (const lead of baseLeads) {
+		leadMap.set(lead.uuid, lead as LocalLead);
+	}
+	for (const lead of disabledBrevoLeads) {
+		leadMap.set(lead.uuid, {
+			...(lead as LocalLead),
+			brevoSyncStatus: 'pending'
+		});
+	}
+
+	const leads = Array.from(leadMap.values()).slice(0, 25);
 	if (!leads.length) {
 		setSyncHealth({ lastPushAt: new Date().toISOString() });
 		return;
@@ -187,7 +205,7 @@ async function pullRemoteChanges() {
 	setSyncHealth({ lastPullAt: new Date().toISOString() });
 }
 
-export async function syncNow() {
+export async function syncNow(options: SyncOptions = {}) {
 	if (running) return;
 	if (!navigator.onLine) {
 		setSyncHealth({
@@ -202,7 +220,7 @@ export async function syncNow() {
 	setSyncHealth({ lastRunAt: new Date().toISOString() });
 	try {
 		await registerDevice();
-		await pushPendingLeads();
+		await pushPendingLeads(options);
 		await pullRemoteChanges();
 		setSyncHealth({
 			lastSuccessAt: new Date().toISOString(),

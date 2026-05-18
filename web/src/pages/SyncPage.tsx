@@ -76,7 +76,7 @@ export function SyncPage() {
   const handleSync = async () => {
     setSyncing(true);
     setNotice('');
-    await syncNow();
+    await syncNow({ retryDisabledBrevo: true });
     setSyncing(false);
     setSyncHealth(getSyncHealth());
     await loadLeads();
@@ -129,6 +129,8 @@ export function SyncPage() {
     return { status: 'No syncs yet', icon: '-', color: 'pending' };
   };
 
+  const syncDisplay = getSyncStatusDisplay();
+
   return (
     <section className='screen'>
       <div className='screen-head'>
@@ -143,15 +145,12 @@ export function SyncPage() {
         <div className='status-message error'>Offline mode active. Leads are saved locally and will auto-retry sync/email when online.</div>
       ) : null}
 
-      {(() => {
-        const display = getSyncStatusDisplay();
-        return (
-          <div className={`sync-status-banner ${display.color}`}>
-            <span className={`sync-status-icon ${display.color}`}>{display.icon}</span>
-            <span className='sync-status-text'>{display.status}</span>
-          </div>
-        );
-      })()}
+      {syncDisplay.color !== 'success' ? (
+        <div className={`sync-status-banner ${syncDisplay.color}`}>
+          <span className={`sync-status-icon ${syncDisplay.color}`}>{syncDisplay.icon}</span>
+          <span className='sync-status-text'>{syncDisplay.status}</span>
+        </div>
+      ) : null}
 
       <article className={`sync-health-accordion ${expandedHealth ? 'open' : ''}`}>
         <button
@@ -224,18 +223,38 @@ export function SyncPage() {
 
                 <div id={`lead-${lead.uuid}`} className='queue-item-details'>
                   <p className='queue-item-meta'>{lead.email || 'No email'}</p>
-                  <div className='queue-detail-inline'>
-                    <span>Phone: <strong>{lead.phone || 'None'}</strong></span>
-                    <span>Company: <strong>{lead.company || 'None'}</strong></span>
-                    <span>Interest: <strong>{lead.interestArea || 'None'}</strong></span>
-                    <span>Updated: <strong>{formatTs(lead.updatedAt)}</strong></span>
-                    <span>Last Synced: <strong>{formatTs(lead.lastSyncedAt)}</strong></span>
-                    <span>Created: <strong>{formatTs(lead.createdAt)}</strong></span>
+                  <div className='queue-status-lines'>
+                    <p><strong>Email Status:</strong> {statusLabel(lead.emailSentStatus)}</p>
+                    <p><strong>Database Status:</strong> {statusLabel(lead.syncStatus)}</p>
+                    <p><strong>Brevo Status:</strong> {statusLabel(lead.brevoSyncStatus)}</p>
+                  </div>
+                  <div className='queue-detail-stack'>
+                    <p><strong>Phone:</strong> {lead.phone || 'None'}</p>
+                    <p><strong>Company:</strong> {lead.company || 'None'}</p>
+                    <p><strong>Interest:</strong> {lead.interestArea || 'None'}</p>
+                    <p><strong>Updated:</strong> {formatTs(lead.updatedAt)}</p>
+                    <p><strong>Last Synced:</strong> {formatTs(lead.lastSyncedAt)}</p>
+                    <p><strong>Created:</strong> {formatTs(lead.createdAt)}</p>
                   </div>
                   {lead.notes ? <p className='queue-item-notes'>{lead.notes}</p> : null}
                 </div>
               </article>
             ))}
+          </div>
+
+          <div className='status-legend-inline icon-legend'>
+            <span className='legend-item'>
+              <span className='status-chip'>E<span className='status-dot pending' /></span>
+              Email
+            </span>
+            <span className='legend-item'>
+              <span className='status-chip'>D<span className='status-dot pending' /></span>
+              Database
+            </span>
+            <span className='legend-item'>
+              <span className='status-chip'>B<span className='status-dot pending' /></span>
+              Brevo
+            </span>
           </div>
 
           <div className='status-legend-inline'>
