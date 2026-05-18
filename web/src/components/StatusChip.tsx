@@ -11,13 +11,12 @@ export function StatusChip({ letter, status, label }: Props) {
   const variant = statusVariant(status);
   return (
     <span
-      className='status-chip'
+      className={`status-chip status-chip-${variant}`}
       title={`${label}: ${status ?? 'pending'}`}
       aria-label={`${label} status: ${status ?? 'pending'}`}
       role='listitem'
     >
       {letter}
-      <span className={`status-dot ${variant}`} />
     </span>
   );
 }

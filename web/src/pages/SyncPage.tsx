@@ -6,7 +6,7 @@ import { LeadCard } from '../components/LeadCard';
 
 export function SyncPage() {
   const { leads, refresh } = useLeads(100);
-  const { health, smtpStatus, loadingSmtp } = useSyncHealth();
+  const { smtpStatus, loadingSmtp } = useSyncHealth();
 
   const [expandedLead, setExpandedLead] = useState<string | null>(null);
   const [online, setOnline] = useState(navigator.onLine);
@@ -30,12 +30,6 @@ export function SyncPage() {
     if (changed) void refresh();
   };
 
-  const syncDisplay = (() => {
-    if (syncing) return { label: 'Syncing\u2026', variant: 'syncing' };
-    if (health.lastError) return { label: 'Last sync failed', variant: 'failed' };
-    return null;
-  })();
-
   const toggleLead = (uuid: string) =>
     setExpandedLead((prev) => (prev === uuid ? null : uuid));
 
@@ -52,12 +46,6 @@ export function SyncPage() {
       {!online ? (
         <div className='status-message error'>
           Offline \u2014 leads saved locally, will sync when back online.
-        </div>
-      ) : null}
-
-      {syncDisplay ? (
-        <div className={`sync-status-banner ${syncDisplay.variant}`}>
-          <span className='sync-status-text'>{syncDisplay.label}</span>
         </div>
       ) : null}
 

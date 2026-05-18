@@ -26,11 +26,11 @@ export function HomePage() {
         </div>
       </div>
 
-      {showThanks ? (
-        <div className='thanks-banner' key='thanks'>
+      <div className='thanks-slot' aria-live='polite'>
+        <div className={`thanks-banner${showThanks ? ' visible' : ''}`}>
           ✓ Lead saved — thank you!
         </div>
-      ) : null}
+      </div>
 
       <div className='home-hero'>
         <h2>Lead Capture</h2>

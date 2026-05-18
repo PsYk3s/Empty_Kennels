@@ -43,7 +43,6 @@ body {
 	justify-content: space-between;
 	align-items: center;
 	padding: 0.9rem 1rem 0.7rem;
-	border-bottom: 1px solid var(--border-dark);
 }
 
 .brand-block h1 {
@@ -88,7 +87,7 @@ body {
 	position: fixed;
 	left: 0;
 	right: 0;
-	bottom: calc(56px + env(safe-area-inset-bottom));
+	bottom: calc(62px + env(safe-area-inset-bottom));
 	z-index: 90;
 	display: flex;
 	justify-content: center;
@@ -141,7 +140,6 @@ body {
 	margin: 0 auto;
 	background: var(--dark-surface);
 	border-radius: 18px;
-	border: 1px solid var(--border-dark);
 	padding: 1rem;
 	box-shadow: 0 14px 30px rgba(0, 0, 0, 0.3);
 	animation: slideUp 0.5s ease-out;
@@ -174,7 +172,7 @@ body {
 	display: grid;
 	gap: 1.2rem;
 	align-content: center;
-	min-height: 300px;
+	min-height: calc(100vh - 210px);
 	justify-items: center;
 	text-align: center;
 }
@@ -220,6 +218,12 @@ body {
 	letter-spacing: -0.02em;
 }
 
+.thanks-slot {
+	min-height: 52px;
+	display: grid;
+	place-items: center;
+}
+
 .thanks-banner {
 	text-align: center;
 	padding: 0.75rem 1rem;
@@ -229,7 +233,14 @@ body {
 	color: var(--accent-green);
 	font-weight: 600;
 	font-size: 1rem;
-	animation: thanksIn 350ms ease-out, thanksOut 500ms ease-in 3000ms forwards;
+	opacity: 0;
+	transform: translateY(-4px);
+	transition: opacity 260ms ease, transform 260ms ease;
+}
+
+.thanks-banner.visible {
+	opacity: 1;
+	transform: translateY(0);
 }
 
 @keyframes thanksIn {
@@ -622,47 +633,44 @@ textarea {
 .status-chip {
 	display: inline-flex;
 	align-items: center;
-	gap: 0.3rem;
+	justify-content: center;
 	font-size: 0.66rem;
 	font-weight: 700;
-	letter-spacing: 0.04em;
+	letter-spacing: 0.02em;
 	color: var(--light-text);
 	line-height: 1;
-	padding: 0.2rem 0.35rem;
+	width: 22px;
+	height: 22px;
+	padding: 0;
 	border-radius: 999px;
-	border: 1px solid var(--border-dark);
+	border: 2px solid var(--border-dark);
 	background: rgba(255, 255, 255, 0.02);
-	min-width: 38px;
-	justify-content: center;
 }
 
-.status-dot {
-	width: 9px;
-	height: 9px;
-	border-radius: 50%;
-	border: 1px solid rgba(0, 0, 0, 0.25);
-	background: #abb5b7;
+.status-chip-success {
+	border-color: var(--accent-green);
+	color: var(--accent-green);
 }
 
-.status-dot.success {
-	background: var(--accent-green);
+.status-chip-pending {
+	border-color: #ffc107;
+	color: #ffc107;
 }
 
-.status-dot.pending {
-	background: #ffc107;
-}
-
-.status-dot.syncing {
-	background: #67d7ff;
+.status-chip-syncing {
+	border-color: #67d7ff;
+	color: #67d7ff;
 	animation: pulseDot 0.95s ease-in-out infinite;
 }
 
-.status-dot.failed {
-	background: #ff5757;
+.status-chip-failed {
+	border-color: #ff5757;
+	color: #ff8f8f;
 }
 
-.status-dot.disabled {
-	background: #abb5b7;
+.status-chip-disabled {
+	border-color: #8a9398;
+	color: #8a9398;
 }
 
 @keyframes pulseDot {
@@ -1127,7 +1135,6 @@ textarea {
 	background: rgba(15, 20, 16, 0.92);
 	backdrop-filter: blur(14px);
 	-webkit-backdrop-filter: blur(14px);
-	border-top: 1px solid var(--border-dark);
 }
 
 .nav-pill {
@@ -1194,7 +1201,7 @@ textarea {
 	}
 
 	.app-meta {
-		bottom: calc(66px + env(safe-area-inset-bottom));
+		bottom: calc(74px + env(safe-area-inset-bottom));
 	}
 }
 
