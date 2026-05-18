@@ -29,7 +29,21 @@ export const db = {
         })
         .slice(0, limit);
     },
-    async pendingList(limit = 25) { return readLeads().filter((l: any) => ['pending', 'failed'].includes(l.syncStatus)).slice(0, limit); },
+    async pendingList(limit = 25) {
+      return readLeads()
+        .filter((l: any) => {
+          const syncRetry = ['pending', 'failed'].includes(l.syncStatus);
+          const emailRetry = ['pending', 'failed'].includes(l.emailSentStatus);
+          const brevoRetry = ['pending', 'failed'].includes(l.brevoSyncStatus);
+          return syncRetry || emailRetry || brevoRetry;
+        })
+        .sort((a: any, b: any) => {
+          const at = new Date(a.updatedAt || a.createdAt || 0).getTime();
+          const bt = new Date(b.updatedAt || b.createdAt || 0).getTime();
+          return at - bt;
+        })
+        .slice(0, limit);
+    },
     async syncingList() { return readLeads().filter((l: any) => l.syncStatus === 'syncing'); },
     async pendingCount() { return readLeads().filter((l: any) => l.syncStatus !== 'synced').length; }
   }

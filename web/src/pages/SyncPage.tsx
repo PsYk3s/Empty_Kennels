@@ -7,6 +7,8 @@ type SMTPStatus = { ok: boolean; message: string } | null;
 
 export function SyncPage() {
   const [leads, setLeads] = useState<any[]>([]);
+  const [expandedLead, setExpandedLead] = useState<string | null>(null);
+  const [online, setOnline] = useState(navigator.onLine);
   const [syncing, setSyncing] = useState(false);
   const [emailing, setEmailing] = useState(false);
   const [notice, setNotice] = useState('');
@@ -19,11 +21,24 @@ export function SyncPage() {
     checkSmtp();
 
     const onHealth = () => setSyncHealth(getSyncHealth());
+    const onCycle = () => {
+      void loadLeads();
+      setSyncHealth(getSyncHealth());
+    };
+    const onOnline = () => setOnline(true);
+    const onOffline = () => setOnline(false);
+
     window.addEventListener('pb-sync-health', onHealth);
+    window.addEventListener('pb-sync-cycle', onCycle);
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
     const timer = window.setInterval(onHealth, 5000);
 
     return () => {
       window.removeEventListener('pb-sync-health', onHealth);
+      window.removeEventListener('pb-sync-cycle', onCycle);
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
       window.clearInterval(timer);
     };
   }, []);
@@ -84,10 +99,22 @@ export function SyncPage() {
   };
 
   const iconForStatus = (status: string | undefined) => {
-    if (status === 'sent' || status === 'synced') return '✓';
-    if (status === 'syncing' || status === 'pending') return '…';
-    if (status === 'disabled') return '-';
-    return '!';
+    if (status === 'sent' || status === 'synced') return 'success';
+    if (status === 'syncing') return 'syncing';
+    if (status === 'pending') return 'pending';
+    if (status === 'disabled') return 'disabled';
+    return 'failed';
+  };
+
+  const statusLabel = (status: string | undefined) => {
+    if (!status) return 'pending';
+    return status;
+  };
+
+  const formatTs = (value: string | undefined) => {
+    if (!value) return 'Never';
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? 'Never' : date.toLocaleString();
   };
 
   return (
@@ -98,9 +125,13 @@ export function SyncPage() {
 
       {!loadingSmtp && smtpStatus && (
         <div className={`status-message ${smtpStatus.ok ? 'success' : 'error'}`}>
-          {smtpStatus.ok ? '✓' : '⚠'} {smtpStatus.message}
+          {smtpStatus.ok ? 'Email service ready.' : smtpStatus.message}
         </div>
       )}
+
+      {!online ? (
+        <div className='status-message error'>Offline mode active. Leads are saved locally and will auto-retry sync/email when online.</div>
+      ) : null}
 
       <div className='sync-health'>
         <div className='sync-health-title'>Sync Health</div>
@@ -133,42 +164,82 @@ export function SyncPage() {
         <>
           <div className='lead-queue-list'>
             {leads.map((lead) => (
-              <div key={lead.uuid} className='queue-item compact'>
-                <div className='queue-item-header'>
-                  <strong>{lead.firstName} {lead.lastName}</strong>
+              <article key={lead.uuid} className={`queue-item compact ${expandedLead === lead.uuid ? 'open' : ''}`}>
+                <button
+                  type='button'
+                  className='queue-item-toggle'
+                  onClick={() => setExpandedLead((prev) => (prev === lead.uuid ? null : lead.uuid))}
+                  aria-expanded={expandedLead === lead.uuid}
+                  aria-controls={`lead-${lead.uuid}`}
+                >
+                  <div className='queue-item-header'>
+                    <strong>{lead.firstName} {lead.lastName}</strong>
+                    <span className='queue-chevron' aria-hidden='true'>{expandedLead === lead.uuid ? '▾' : '▸'}</span>
+                  </div>
+                  <p className='queue-item-meta'>{lead.email || 'No email'}</p>
                   <div className='status-icons' role='list' aria-label='Lead sync status'>
-                    <span className={`status-icon ${lead.emailSentStatus || 'pending'}`} title='Admin Email' aria-label='Admin Email status'>
-                      ✉ {iconForStatus(lead.emailSentStatus)}
+                    <span
+                      className='status-chip'
+                      title={`Email: ${statusLabel(lead.emailSentStatus)}`}
+                      aria-label={`Email status ${statusLabel(lead.emailSentStatus)}`}
+                    >
+                      E
+                      <span className={`status-dot ${iconForStatus(lead.emailSentStatus)}`} />
                     </span>
-                    <span className={`status-icon ${lead.syncStatus || 'pending'}`} title='Database Sync' aria-label='Database sync status'>
-                      ⛁ {iconForStatus(lead.syncStatus)}
+                    <span
+                      className='status-chip'
+                      title={`Database: ${statusLabel(lead.syncStatus)}`}
+                      aria-label={`Database status ${statusLabel(lead.syncStatus)}`}
+                    >
+                      D
+                      <span className={`status-dot ${iconForStatus(lead.syncStatus)}`} />
                     </span>
-                    <span className={`status-icon ${lead.brevoSyncStatus || 'pending'}`} title='Brevo Sync' aria-label='Brevo sync status'>
-                      B {iconForStatus(lead.brevoSyncStatus)}
+                    <span
+                      className='status-chip'
+                      title={`Brevo: ${statusLabel(lead.brevoSyncStatus)}`}
+                      aria-label={`Brevo status ${statusLabel(lead.brevoSyncStatus)}`}
+                    >
+                      B
+                      <span className={`status-dot ${iconForStatus(lead.brevoSyncStatus)}`} />
                     </span>
                   </div>
+                </button>
+
+                <div id={`lead-${lead.uuid}`} className='queue-item-details'>
+                  <div className='queue-detail-grid'>
+                    <div><span>Phone</span><strong>{lead.phone || 'None'}</strong></div>
+                    <div><span>Company</span><strong>{lead.company || 'None'}</strong></div>
+                    <div><span>Interest</span><strong>{lead.interestArea || 'None'}</strong></div>
+                    <div><span>Updated</span><strong>{formatTs(lead.updatedAt)}</strong></div>
+                    <div><span>Last Synced</span><strong>{formatTs(lead.lastSyncedAt)}</strong></div>
+                    <div><span>Created</span><strong>{formatTs(lead.createdAt)}</strong></div>
+                  </div>
+                  {lead.notes ? <p className='queue-item-notes'>{lead.notes}</p> : null}
                 </div>
-                <p className='queue-item-meta'>{lead.email || 'No email'}</p>
-              </div>
+              </article>
             ))}
           </div>
 
           <div className='status-legend'>
             <div className='legend-title'>Status Legend</div>
             <div className='legend-row'>
-              <span className='legend-icon success'>✓</span>
+              <span className='legend-dot success' />
               <span className='legend-text'>Synced / Sent</span>
             </div>
             <div className='legend-row'>
-              <span className='legend-icon pending'>…</span>
+              <span className='legend-dot pending' />
               <span className='legend-text'>Pending</span>
             </div>
             <div className='legend-row'>
-              <span className='legend-icon failed'>!</span>
+              <span className='legend-dot syncing' />
+              <span className='legend-text'>Syncing now</span>
+            </div>
+            <div className='legend-row'>
+              <span className='legend-dot failed' />
               <span className='legend-text'>Failed</span>
             </div>
             <div className='legend-row'>
-              <span className='legend-icon disabled'>-</span>
+              <span className='legend-dot disabled' />
               <span className='legend-text'>Disabled</span>
             </div>
           </div>

@@ -37,6 +37,7 @@ const DEVICE_ID_KEY = 'pb_device_id_v1';
 const SYNC_HEALTH_KEY = 'pb_sync_health_v1';
 const SYNC_INTERVAL_MS = 15000;
 const HEALTH_EVENT = 'pb-sync-health';
+const CYCLE_EVENT = 'pb-sync-cycle';
 
 let running = false;
 let loopStarted = false;
@@ -122,25 +123,33 @@ async function pushPendingLeads() {
 		return;
 	}
 
-	await db.leads.bulkPut(leads.map((l: LocalLead) => ({ ...l, syncStatus: 'syncing' })));
+	for (const lead of leads) {
+		const syncingAt = new Date().toISOString();
+		await db.leads.put({ ...lead, syncStatus: 'syncing', updatedAt: syncingAt });
 
-	const resp = await api.post<{ synced?: SyncItem[] }>('/leads/batch', { leads });
-	const byId = new Map((resp.synced || []).map((s) => [s.uuid, s]));
-	const now = new Date().toISOString();
+		try {
+			const resp = await api.post<{ synced?: SyncItem[] }>('/leads/batch', { leads: [lead] });
+			const remote = (resp.synced || [])[0];
+			const now = new Date().toISOString();
 
-	await db.leads.bulkPut(
-		leads.map((l: LocalLead) => {
-			const remote = byId.get(l.uuid);
-			return {
-				...l,
+			await db.leads.put({
+				...lead,
 				syncStatus: remote?.syncStatus || 'failed',
-				emailSentStatus: remote?.emailSentStatus || l.emailSentStatus || 'failed',
-				brevoSyncStatus: remote?.brevoSyncStatus || l.brevoSyncStatus || 'failed',
+				emailSentStatus: remote?.emailSentStatus || lead.emailSentStatus || 'pending',
+				brevoSyncStatus: remote?.brevoSyncStatus || lead.brevoSyncStatus || 'disabled',
 				lastSyncedAt: now,
 				updatedAt: now
-			};
-		})
-	);
+			});
+		} catch {
+			await db.leads.put({
+				...lead,
+				syncStatus: 'failed',
+				emailSentStatus: lead.emailSentStatus || 'pending',
+				brevoSyncStatus: lead.brevoSyncStatus || 'disabled',
+				updatedAt: new Date().toISOString()
+			});
+		}
+	}
 
 	setSyncHealth({ lastPushAt: new Date().toISOString() });
 }
@@ -179,7 +188,15 @@ async function pullRemoteChanges() {
 }
 
 export async function syncNow() {
-	if (running || !navigator.onLine) return;
+	if (running) return;
+	if (!navigator.onLine) {
+		setSyncHealth({
+			lastRunAt: new Date().toISOString(),
+			lastError: 'Offline. Leads are queued and will retry when back online.'
+		});
+		window.dispatchEvent(new CustomEvent(CYCLE_EVENT));
+		return;
+	}
 
 	running = true;
 	setSyncHealth({ lastRunAt: new Date().toISOString() });
@@ -197,8 +214,8 @@ export async function syncNow() {
 			queued.map((l: LocalLead) => ({
 				...l,
 				syncStatus: 'failed',
-				emailSentStatus: (l.emailSentStatus as string) || 'failed',
-				brevoSyncStatus: (l.brevoSyncStatus as string) || 'failed',
+				emailSentStatus: (l.emailSentStatus as string) || 'pending',
+				brevoSyncStatus: (l.brevoSyncStatus as string) || 'disabled',
 				updatedAt: new Date().toISOString()
 			}))
 		);
@@ -209,6 +226,7 @@ export async function syncNow() {
 		});
 	} finally {
 		running = false;
+		window.dispatchEvent(new CustomEvent(CYCLE_EVENT));
 	}
 }
 

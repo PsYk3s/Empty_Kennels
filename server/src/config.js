@@ -1,7 +1,7 @@
 export const APP_CONFIG = {
   port: 4000,
   corsOrigins: ['*'],
-  databaseUrl: 'postgresql://postgres:postgres@localhost:5432/pb_app',
+  databaseUrl: process.env.DATABASE_URL || '',
   adminEmail: 'warrenb@pienaarbros.co.za',
   smtp: {
     host: 'smtp-relay.brevo.com',
