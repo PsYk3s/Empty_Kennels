@@ -4,11 +4,15 @@
   "installCommand": "npm install",
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
+      "source": "/",
+      "destination": "/index.html"
     },
     {
-      "source": "/(.*)",
+      "source": "/lead",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/sync",
       "destination": "/index.html"
     }
   ],
