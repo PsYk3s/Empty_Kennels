@@ -68,14 +68,14 @@ export function SyncPage() {
         </div>
       )}
 
-      <div className='actions-row'>
+      <div className='sync-now-row'>
         <button
           type='button'
-          className='primary-button'
+          className='sync-now-link'
           onClick={handleSync}
           disabled={syncing}
         >
-          {syncing ? 'Syncing\u2026' : 'Sync Now'}
+          {syncing ? 'Syncing\u2026' : 'Sync now'}
         </button>
       </div>
     </section>

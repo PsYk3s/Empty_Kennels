@@ -522,8 +522,8 @@ textarea {
 	display: flex;
 	flex-direction: column;
 	gap: 0.5rem;
-	margin-bottom: 1rem;
-	max-height: 50vh;
+	margin-bottom: 1.8rem;
+	max-height: min(68vh, calc(100vh - 270px));
 	overflow-y: auto;
 }
 
@@ -630,6 +630,10 @@ textarea {
 	flex-wrap: wrap;
 }
 
+.status-icons-inline {
+	margin-bottom: 0.55rem;
+}
+
 .status-chip {
 	display: inline-flex;
 	align-items: center;
@@ -645,6 +649,35 @@ textarea {
 	border-radius: 999px;
 	border: 2px solid var(--border-dark);
 	background: rgba(255, 255, 255, 0.02);
+}
+
+.sync-now-row {
+	display: flex;
+	justify-content: center;
+	margin-top: 0.4rem;
+	margin-bottom: 0.7rem;
+}
+
+.sync-now-link {
+	border: 0;
+	background: transparent;
+	color: #97a39c;
+	font-size: 0.84rem;
+	letter-spacing: 0.02em;
+	text-transform: lowercase;
+	cursor: pointer;
+	padding: 0.2rem 0.3rem;
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+.sync-now-link:hover:not(:disabled) {
+	color: #c0c8c8;
+}
+
+.sync-now-link:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
 }
 
 .status-chip-success {
