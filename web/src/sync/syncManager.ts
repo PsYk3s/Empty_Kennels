@@ -6,6 +6,9 @@ type SyncItem = {
 	syncStatus?: string;
 	emailSentStatus?: string;
 	brevoSyncStatus?: string;
+	emailError?: string | null;
+	brevoError?: string | null;
+	syncError?: string | null;
 };
 
 type LocalLead = {
@@ -15,6 +18,9 @@ type LocalLead = {
 	syncStatus?: string;
 	emailSentStatus?: string;
 	brevoSyncStatus?: string;
+	emailStatusMessage?: string;
+	brevoStatusMessage?: string;
+	databaseStatusMessage?: string;
 	[key: string]: unknown;
 };
 
@@ -155,15 +161,27 @@ async function pushPendingLeads(options: SyncOptions = {}) {
 				syncStatus: remote?.syncStatus || 'failed',
 				emailSentStatus: remote?.emailSentStatus || lead.emailSentStatus || 'pending',
 				brevoSyncStatus: remote?.brevoSyncStatus || lead.brevoSyncStatus || 'disabled',
+				databaseStatusMessage:
+					remote?.syncError || (remote?.syncStatus === 'synced' ? 'Saved to server database.' : 'Database sync failed.'),
+				emailStatusMessage:
+					remote?.emailError || (remote?.emailSentStatus === 'sent' ? 'Email sent successfully.' : undefined),
+				brevoStatusMessage:
+					remote?.brevoError
+					|| (remote?.brevoSyncStatus === 'synced'
+						? 'Synced to Brevo contact list.'
+						: remote?.brevoSyncStatus === 'disabled'
+							? 'Brevo integration is disabled on the API.'
+							: undefined),
 				lastSyncedAt: now,
 				updatedAt: now
 			});
-		} catch {
+		} catch (error) {
 			await db.leads.put({
 				...lead,
 				syncStatus: 'failed',
 				emailSentStatus: lead.emailSentStatus || 'pending',
 				brevoSyncStatus: lead.brevoSyncStatus || 'disabled',
+				databaseStatusMessage: error instanceof Error ? error.message : 'Could not reach API during sync.',
 				updatedAt: new Date().toISOString()
 			});
 		}
@@ -194,6 +212,9 @@ async function pullRemoteChanges() {
 			syncStatus: remote.syncStatus || 'synced',
 			emailSentStatus: remote.emailSentStatus || 'pending',
 			brevoSyncStatus: remote.brevoSyncStatus || 'pending',
+			emailStatusMessage: (remote as LocalLead).emailStatusMessage,
+			brevoStatusMessage: (remote as LocalLead).brevoStatusMessage,
+			databaseStatusMessage: (remote as LocalLead).databaseStatusMessage,
 			updatedAt: remote.updatedAt || remote.createdAt || new Date().toISOString()
 		});
 	}

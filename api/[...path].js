@@ -469,6 +469,9 @@ module.exports = async function handler(req, res) {
             syncStatus: 'synced',
             emailSentStatus,
             brevoSyncStatus,
+            emailError,
+            brevoError,
+            syncError: null,
             error: [emailError, brevoError].filter(Boolean).join(' | ') || null
           });
         } catch (leadError) {
@@ -477,6 +480,9 @@ module.exports = async function handler(req, res) {
             syncStatus: 'failed',
             emailSentStatus: 'failed',
             brevoSyncStatus: CONFIG.brevo.enabled ? 'failed' : 'disabled',
+            emailError: null,
+            brevoError: null,
+            syncError: leadError instanceof Error ? leadError.message : 'Lead sync failed',
             error: leadError instanceof Error ? leadError.message : 'Lead sync failed'
           });
         }

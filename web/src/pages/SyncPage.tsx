@@ -112,6 +112,24 @@ export function SyncPage() {
     return status;
   };
 
+  const reasonForStatus = (
+    type: 'email' | 'database' | 'brevo',
+    status: string | undefined,
+    explicitReason?: string
+  ) => {
+    if (explicitReason) return explicitReason;
+
+    if (status === 'sent' || status === 'synced') {
+      if (type === 'email') return 'Email delivered successfully.';
+      if (type === 'database') return 'Lead saved to central database.';
+      return 'Contact synced to Brevo list.';
+    }
+    if (status === 'syncing') return 'Sync currently in progress.';
+    if (status === 'pending') return 'Queued for next sync attempt.';
+    if (status === 'disabled') return 'Integration disabled in server configuration.';
+    return 'Operation failed. Check API/server credentials and try Sync Now.';
+  };
+
   const formatTs = (value: string | undefined) => {
     if (!value) return 'Never';
     const date = new Date(value);
@@ -224,9 +242,18 @@ export function SyncPage() {
                 <div id={`lead-${lead.uuid}`} className='queue-item-details'>
                   <p className='queue-item-meta'>{lead.email || 'No email'}</p>
                   <div className='queue-status-lines'>
-                    <p><strong>Email Status:</strong> {statusLabel(lead.emailSentStatus)}</p>
-                    <p><strong>Database Status:</strong> {statusLabel(lead.syncStatus)}</p>
-                    <p><strong>Brevo Status:</strong> {statusLabel(lead.brevoSyncStatus)}</p>
+                    <div className='queue-status-item'>
+                      <p><strong>Email Status:</strong> {statusLabel(lead.emailSentStatus)}</p>
+                      <p className='queue-status-reason'>{reasonForStatus('email', lead.emailSentStatus, lead.emailStatusMessage)}</p>
+                    </div>
+                    <div className='queue-status-item'>
+                      <p><strong>Database Status:</strong> {statusLabel(lead.syncStatus)}</p>
+                      <p className='queue-status-reason'>{reasonForStatus('database', lead.syncStatus, lead.databaseStatusMessage)}</p>
+                    </div>
+                    <div className='queue-status-item'>
+                      <p><strong>Brevo Status:</strong> {statusLabel(lead.brevoSyncStatus)}</p>
+                      <p className='queue-status-reason'>{reasonForStatus('brevo', lead.brevoSyncStatus, lead.brevoStatusMessage)}</p>
+                    </div>
                   </div>
                   <div className='queue-detail-stack'>
                     <p><strong>Phone:</strong> {lead.phone || 'None'}</p>
@@ -242,22 +269,10 @@ export function SyncPage() {
             ))}
           </div>
 
-          <div className='status-legend-inline icon-legend'>
-            <span className='legend-item'>
-              <span className='status-chip'>E<span className='status-dot pending' /></span>
-              Email
-            </span>
-            <span className='legend-item'>
-              <span className='status-chip'>D<span className='status-dot pending' /></span>
-              Database
-            </span>
-            <span className='legend-item'>
-              <span className='status-chip'>B<span className='status-dot pending' /></span>
-              Brevo
-            </span>
-          </div>
-
           <div className='status-legend-inline'>
+            <span className='legend-item'><span className='legend-chip-letter'>E</span> Email</span>
+            <span className='legend-item'><span className='legend-chip-letter'>D</span> Database</span>
+            <span className='legend-item'><span className='legend-chip-letter'>B</span> Brevo</span>
             <span className='legend-item'><span className='legend-dot success' /> Synced</span>
             <span className='legend-item'><span className='legend-dot pending' /> Pending</span>
             <span className='legend-item'><span className='legend-dot syncing' /> Syncing</span>

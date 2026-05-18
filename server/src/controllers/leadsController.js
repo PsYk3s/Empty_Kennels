@@ -36,6 +36,8 @@ export async function batchCreateLeads(req, res, next) {
         const row = inserted.rows[0];
         let emailSentStatus = row.email_sent_status || 'pending';
         let brevoSyncStatus = row.brevo_sync_status || 'pending';
+        let emailError = null;
+        let brevoError = null;
 
         try {
           if (emailSentStatus !== 'sent') {
@@ -46,8 +48,9 @@ export async function batchCreateLeads(req, res, next) {
             await sendLeadEmail({ lead: row, suppliers: supplierRows, eventName: `Event ${lead.eventId}` });
             emailSentStatus = 'sent';
           }
-        } catch {
+        } catch (emailSendError) {
           emailSentStatus = 'failed';
+          emailError = emailSendError instanceof Error ? emailSendError.message : 'Email send failed';
         }
 
         try {
@@ -57,8 +60,9 @@ export async function batchCreateLeads(req, res, next) {
           } else {
             brevoSyncStatus = 'synced';
           }
-        } catch {
+        } catch (brevoSyncError) {
           brevoSyncStatus = 'failed';
+          brevoError = brevoSyncError instanceof Error ? brevoSyncError.message : 'Brevo sync failed';
         }
 
         await pool.query(
@@ -70,9 +74,12 @@ export async function batchCreateLeads(req, res, next) {
           uuid: lead.uuid,
           syncStatus: 'synced',
           emailSentStatus,
-          brevoSyncStatus
+          brevoSyncStatus,
+          emailError,
+          brevoError,
+          syncError: null
         });
-      } catch {
+      } catch (leadError) {
         await pool.query(
           'UPDATE leads SET sync_status=$2, email_sent_status=COALESCE(email_sent_status,$3), brevo_sync_status=COALESCE(brevo_sync_status,$4), updated_at=NOW() WHERE uuid=$1',
           [lead.uuid, 'failed', 'failed', 'failed']
@@ -82,7 +89,10 @@ export async function batchCreateLeads(req, res, next) {
           uuid: lead.uuid,
           syncStatus: 'failed',
           emailSentStatus: 'failed',
-          brevoSyncStatus: 'failed'
+          brevoSyncStatus: 'failed',
+          emailError: null,
+          brevoError: null,
+          syncError: leadError instanceof Error ? leadError.message : 'Lead sync failed'
         });
       }
     }

@@ -713,16 +713,34 @@ textarea {
 	gap: 0.4rem;
 }
 
-.icon-legend .status-chip {
-	font-size: 0.7rem;
-	min-width: 44px;
+.legend-chip-letter {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 22px;
+	height: 22px;
+	padding: 0 0.35rem;
+	border-radius: 999px;
+	border: 1px solid var(--border-dark);
+	background: rgba(255, 255, 255, 0.02);
+	font-size: 0.72rem;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	color: var(--light-text);
 }
 
 
 .queue-status-lines {
 	display: grid;
-	gap: 0.25rem;
+	gap: 0.45rem;
 	margin-bottom: 0.55rem;
+}
+
+.queue-status-item {
+	padding: 0.35rem 0.45rem;
+	border: 1px solid var(--border-dark);
+	border-radius: 8px;
+	background: rgba(42, 58, 50, 0.2);
 }
 
 .queue-status-lines p {
@@ -730,6 +748,14 @@ textarea {
 	font-size: 0.76rem;
 	line-height: 1.25;
 	color: #bdd0c5;
+}
+
+.queue-status-reason {
+	margin-top: 0.2rem !important;
+	font-size: 0.72rem !important;
+	line-height: 1.3 !important;
+	color: #9ab0a2 !important;
+	word-break: break-word;
 }
 
 .queue-status-lines strong {
