@@ -1,19 +1,26 @@
+import 'dotenv/config';
+
+const parseBoolean = (value, fallback = false) => {
+  if (value === undefined || value === null || value === '') return fallback;
+  return String(value).toLowerCase() === 'true';
+};
+
 export const APP_CONFIG = {
-  port: 4000,
-  corsOrigins: ['*'],
+  port: Number(process.env.PORT || 4000),
+  corsOrigins: (process.env.CORS_ORIGIN || '*').split(',').map((v) => v.trim()).filter(Boolean),
   databaseUrl: process.env.DATABASE_URL || '',
-  adminEmail: 'warrenb@pienaarbros.co.za',
+  adminEmail: process.env.ADMIN_NOTIFICATION_EMAIL || 'warrenb@pienaarbros.co.za',
   smtp: {
-    host: 'smtp-relay.brevo.com',
-    port: 587,
-    secure: false,
-    user: 'warrenb@pienaarbros.co.za',
-    pass: '',
-    from: 'warrenb@pienaarbros.co.za'
+    host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
+    port: Number(process.env.SMTP_PORT || 587),
+    secure: parseBoolean(process.env.SMTP_SECURE, false),
+    user: process.env.SMTP_LOGIN || '',
+    pass: process.env.SMTP_KEY || '',
+    from: process.env.SMTP_FROM || process.env.ADMIN_NOTIFICATION_EMAIL || 'warrenb@pienaarbros.co.za'
   },
   brevo: {
-    enabled: false,
-    apiKey: '',
-    listId: 26
+    enabled: parseBoolean(process.env.BREVO_ENABLED, false),
+    apiKey: process.env.BREVO_API_KEY || process.env.BREVO_KEY || '',
+    listId: Number(process.env.BREVO_LIST_ID || 26)
   }
 };
