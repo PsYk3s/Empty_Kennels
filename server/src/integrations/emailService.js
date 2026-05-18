@@ -1,18 +1,27 @@
 import nodemailer from 'nodemailer';
+import { APP_CONFIG } from '../config.js';
+
+const ADMIN_EMAIL = APP_CONFIG.adminEmail;
+
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
-  port: Number(process.env.SMTP_PORT || 587),
-  secure: false,
-  auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } : undefined
+  host: APP_CONFIG.smtp.host,
+  port: APP_CONFIG.smtp.port,
+  secure: APP_CONFIG.smtp.secure,
+  auth: APP_CONFIG.smtp.user ? { user: APP_CONFIG.smtp.user, pass: APP_CONFIG.smtp.pass } : undefined
 });
+
+function uniqueEmails(values = []) {
+  return [...new Set(values.map((v) => String(v || '').trim().toLowerCase()).filter(Boolean))];
+}
+
 export async function sendLeadEmail({ lead, suppliers, eventName }) {
-  const cc = suppliers.map((s) => s.supplier_email).filter(Boolean);
+  const cc = uniqueEmails(suppliers.map((s) => s.supplier_email)).filter((email) => email !== ADMIN_EMAIL);
   await transporter.sendMail({
-    from: process.env.SMTP_FROM,
-    to: process.env.ADMIN_NOTIFICATION_EMAIL || 'warrenb@pienaarbros.co.za',
+    from: APP_CONFIG.smtp.from || APP_CONFIG.smtp.user || ADMIN_EMAIL,
+    to: ADMIN_EMAIL,
     cc,
     subject: `New Lead: ${lead.first_name} ${lead.last_name}`,
-    text: `Event: ${eventName}\nEmail: ${lead.email}\nPhone: ${lead.phone}\nInterest: ${lead.interest_area}`
+    text: `Event: ${eventName}\nName: ${lead.first_name} ${lead.last_name}\nEmail: ${lead.email}\nPhone: ${lead.phone || ''}\nCompany: ${lead.company || ''}\nInterest: ${lead.interest_area || ''}\nNotes: ${lead.notes || ''}`
   });
 }
 
@@ -27,9 +36,13 @@ export async function sendFullLeadListEmail({ leads }) {
   const body = `Lead Export (${new Date().toISOString()})\n\nTotal Leads: ${leads.length}\n\n${rows || 'No leads found.'}`;
 
   await transporter.sendMail({
-    from: process.env.SMTP_FROM || process.env.SMTP_USER,
-    to: process.env.ADMIN_NOTIFICATION_EMAIL || 'warrenb@pienaarbros.co.za',
+    from: APP_CONFIG.smtp.from || APP_CONFIG.smtp.user || ADMIN_EMAIL,
+    to: ADMIN_EMAIL,
     subject: `Lead List Export (${leads.length})`,
     text: body
   });
+}
+
+export async function verifySmtpConnection() {
+  await transporter.verify();
 }

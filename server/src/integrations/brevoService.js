@@ -1,10 +1,12 @@
+import { APP_CONFIG } from '../config.js';
+
 export async function syncLeadToBrevo(lead) {
-  if (process.env.BREVO_ENABLED !== 'true') {
+  if (!APP_CONFIG.brevo.enabled) {
     return { skipped: true, synced: false };
   }
 
-  const apiKey = process.env.BREVO_API_KEY;
-  const listId = Number(process.env.BREVO_LIST_ID || 0);
+  const apiKey = APP_CONFIG.brevo.apiKey;
+  const listId = Number(APP_CONFIG.brevo.listId || 0);
 
   if (!apiKey || !listId) {
     throw new Error('Missing BREVO_API_KEY or BREVO_LIST_ID');

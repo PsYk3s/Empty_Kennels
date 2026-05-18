@@ -1,1 +1,1 @@
-import fs from 'fs'; import pg from 'pg'; const sql=fs.readFileSync(new URL('./001_init.sql', import.meta.url),'utf8'); const pool=new pg.Pool({connectionString:process.env.DATABASE_URL}); await pool.query(sql); await pool.end(); console.log('migrations complete');
+import fs from 'fs'; import pg from 'pg'; const sql=fs.readFileSync(new URL('./001_init.sql', import.meta.url),'utf8'); const pool=new pg.Pool({connectionString:'postgresql://postgres:postgres@localhost:5432/pb_app'}); await pool.query(sql); await pool.end(); console.log('migrations complete');

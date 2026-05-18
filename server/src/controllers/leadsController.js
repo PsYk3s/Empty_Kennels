@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { pool } from '../database/db.js';
 import { sendFullLeadListEmail, sendLeadEmail } from '../integrations/emailService.js';
 import { syncLeadToBrevo } from '../integrations/brevoService.js';
+import { APP_CONFIG } from '../config.js';
 
 const leadSchema = z.object({ uuid: z.string(), firstName: z.string(), lastName: z.string(), company: z.string().optional(), email: z.string().email(), phone: z.string().optional(), interestArea: z.string().optional(), notes: z.string().optional(), eventId: z.number(), selectedSuppliers: z.array(z.number()).default([]), createdAt: z.string() });
 
@@ -52,7 +53,7 @@ export async function batchCreateLeads(req, res, next) {
         try {
           const brevoResult = await syncLeadToBrevo(lead);
           if (brevoResult.skipped) {
-            brevoSyncStatus = process.env.BREVO_ENABLED === 'true' ? 'pending' : 'disabled';
+            brevoSyncStatus = APP_CONFIG.brevo.enabled ? 'pending' : 'disabled';
           } else {
             brevoSyncStatus = 'synced';
           }
@@ -93,7 +94,7 @@ export async function batchCreateLeads(req, res, next) {
 export async function emailLeadListToAdmin(req, res, next) {
   try {
     const rows = (await pool.query(
-      'SELECT first_name, last_name, email, phone, company, interest_area, created_at FROM leads ORDER BY created_at DESC LIMIT 5000'
+      'SELECT first_name, last_name, email, phone, company, interest_area, created_at FROM leads ORDER BY created_at DESC'
     )).rows;
 
     await sendFullLeadListEmail({ leads: rows });

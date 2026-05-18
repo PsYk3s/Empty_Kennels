@@ -1,6 +1,5 @@
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 
 import staffListings from "./routes/staffListings";
 import staffCreateListing from "./routes/staffCreateListing";
@@ -9,8 +8,6 @@ import publicAnimals from "./routes/publicAnimals";
 import staffQr from "./routes/staffQr";
 import publicQr from "./routes/publicQr";
 import publicVerify from "./routes/publicVerify";
-
-dotenv.config();
 
 const app = express();
 
@@ -32,7 +29,7 @@ app.get("/api/health", (_req, res) => {
   res.json({ ok: true });
 });
 
-const port = Number(process.env.API_PORT ?? 3001);
+const port = 3001;
 app.listen(port, () => {
   console.log(`API running on http://localhost:${port}`);
 });

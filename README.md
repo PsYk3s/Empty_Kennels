@@ -52,31 +52,30 @@ Production-ready monorepo containing:
 
 ## Quick Start
 
-1. Copy environment files.
-   ```bash
-   cp .env.example .env
-   cp server/.env.example server/.env
-   cp web/.env.example web/.env
-   ```
-2. Install dependencies.
+1. Install dependencies.
    ```bash
    npm install
    npm install -w server
    npm install -w web
    ```
-3. Start PostgreSQL and API using Docker.
+2. Start PostgreSQL and API using Docker.
    ```bash
    docker compose up -d db server
    ```
-4. Run migrations + seed.
+3. Run migrations + seed.
    ```bash
    npm run db:migrate
    npm run db:seed
    ```
-5. Start web app.
+4. Start web app.
    ```bash
    npm run dev:web
    ```
+
+## Configuration
+- Runtime config is hardcoded in `server/src/config.js`.
+- Database migration and seed scripts use a hardcoded local connection string.
+- No `.env` files are required for local use.
 
 ## Sync Behavior
 - Sync runs on startup, online event, lead create and 10-minute interval.

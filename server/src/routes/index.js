@@ -1,23 +1,14 @@
 import { Router } from 'express';
 import { batchCreateLeads, emailLeadListToAdmin, getLeadChanges } from '../controllers/leadsController.js';
 import { pool } from '../database/db.js';
-import nodemailer from 'nodemailer';
+import { verifySmtpConnection } from '../integrations/emailService.js';
 const router = Router();
 router.post('/leads/batch', batchCreateLeads);
 router.post('/leads/email-admin-list', emailLeadListToAdmin);
 router.get('/leads/changes', getLeadChanges);
 router.get('/health/smtp', async (req, res) => {
   try {
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
-      port: Number(process.env.SMTP_PORT || 587),
-      secure: false,
-      auth: process.env.SMTP_USER ? {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
-      } : undefined
-    });
-    await transporter.verify();
+    await verifySmtpConnection();
     res.json({ ok: true, message: 'SMTP credentials are valid' });
   } catch (e) {
     res.status(500).json({

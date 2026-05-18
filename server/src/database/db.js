@@ -1,5 +1,5 @@
 import pg from 'pg';
-import dotenv from 'dotenv';
-dotenv.config();
+import { APP_CONFIG } from '../config.js';
+
 const { Pool } = pg;
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+export const pool = new Pool({ connectionString: APP_CONFIG.databaseUrl });
