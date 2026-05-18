@@ -106,6 +106,26 @@ function dbConfigErrorForRequest(req) {
   return null;
 }
 
+function resolveRoute(req) {
+  const partsRaw = req.query && req.query.path;
+  if (Array.isArray(partsRaw) && partsRaw.length) {
+    return `/${partsRaw.join('/')}`;
+  }
+  if (typeof partsRaw === 'string' && partsRaw) {
+    return `/${partsRaw}`;
+  }
+
+  try {
+    const parsed = new URL(req.url || '/', 'http://localhost');
+    const pathname = parsed.pathname || '/';
+    if (pathname === '/api') return '/';
+    if (pathname.startsWith('/api/')) return pathname.slice(4);
+    return pathname;
+  } catch {
+    return '/';
+  }
+}
+
 async function ensureSchema() {
   if (schemaReadyPromise) {
     return schemaReadyPromise;
@@ -200,9 +220,7 @@ module.exports = async function handler(req, res) {
     return res.status(204).end();
   }
 
-  const partsRaw = req.query.path;
-  const parts = Array.isArray(partsRaw) ? partsRaw : (partsRaw ? [partsRaw] : []);
-  const route = `/${parts.join('/')}`;
+  const route = resolveRoute(req);
   const dbConfigError = dbConfigErrorForRequest(req);
 
   try {
