@@ -3,6 +3,7 @@ import { NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { HomePage } from './pages/HomePage';
 import { LeadPage } from './pages/LeadPage';
 import { SyncPage } from './pages/SyncPage';
+import { SettingsPage } from './pages/SettingsPage';
 import { InstallPrompt } from './components/InstallPrompt';
 import { startSyncLoop } from './sync/syncManager';
 
@@ -51,9 +52,15 @@ export default function App() {
 						<Route path='/' element={<HomePage />} />
 						<Route path='/lead' element={<LeadPage />} />
 						<Route path='/sync' element={<SyncPage />} />
+						<Route path='/settings' element={<SettingsPage />} />
 					</Routes>
 				</div>
 			</main>
+
+			<footer className='app-meta'>
+				<span>© 2026 Pienaar Bros</span>
+				<NavLink to='/settings' className='app-meta-link'>settings</NavLink>
+			</footer>
 
 			<nav className='bottom-nav' aria-label='Primary'>
 				{navItems.map((item) => (

@@ -55,6 +55,7 @@ export const db = {
         .slice(0, limit);
     },
     async syncingList() { return readLeads().filter((l: any) => l.syncStatus === 'syncing'); },
-    async pendingCount() { return readLeads().filter((l: any) => l.syncStatus !== 'synced').length; }
+    async pendingCount() { return readLeads().filter((l: any) => l.syncStatus !== 'synced').length; },
+    async clear() { writeLeads([]); }
   }
 };
