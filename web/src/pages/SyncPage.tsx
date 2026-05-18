@@ -56,14 +56,9 @@ export function SyncPage() {
   };
 
   const syncDisplay = (() => {
-    if (syncing) return { label: 'Syncing\u2026', variant: 'syncing', icon: '\u27f3' };
-    if (health.lastError) return { label: 'Sync failed', variant: 'failed', icon: '\u26a0' };
-    if (health.lastSuccessAt) {
-      const mins = Math.round((Date.now() - new Date(health.lastSuccessAt).getTime()) / 60000);
-      const ago = mins < 1 ? 'just now' : mins < 60 ? `${mins}m ago` : `${Math.round(mins / 60)}h ago`;
-      return { label: `Synced ${ago}`, variant: 'success', icon: '\u2713' };
-    }
-    return { label: 'No syncs yet', variant: 'pending', icon: '\u2013' };
+    if (syncing) return { label: 'Syncing…', variant: 'syncing' };
+    if (health.lastError) return { label: 'Last sync failed', variant: 'failed' };
+    return null;
   })();
 
   const toggleLead = (uuid: string) =>
@@ -72,7 +67,7 @@ export function SyncPage() {
   return (
     <section className='screen'>
       <div className='screen-head'>
-        <h2>Sync Queue</h2>
+        <h2>Leads</h2>
       </div>
 
       {!loadingSmtp && smtpStatus && !smtpStatus.ok ? (
@@ -81,13 +76,12 @@ export function SyncPage() {
 
       {!online ? (
         <div className='status-message error'>
-          Offline \u2014 leads are saved locally and will sync when back online.
+          Offline — leads saved locally, will sync when back online.
         </div>
       ) : null}
 
-      {syncDisplay.variant !== 'success' ? (
+      {syncDisplay ? (
         <div className={`sync-status-banner ${syncDisplay.variant}`}>
-          <span className={`sync-status-icon ${syncDisplay.variant}`}>{syncDisplay.icon}</span>
           <span className='sync-status-text'>{syncDisplay.label}</span>
         </div>
       ) : null}
@@ -166,6 +160,29 @@ export function SyncPage() {
         </button>
       </div>
       {notice ? <p className='feedback'>{notice}</p> : null}
+
+      <article className={`sync-health-accordion${expandedHealth ? ' open' : ''}`}>
+        <button
+          type='button'
+          className='sync-health-toggle'
+          onClick={() => setExpandedHealth((v) => !v)}
+          aria-expanded={expandedHealth}
+        >
+          <span className='sync-health-title'>Sync Diagnostics</span>
+          <span className={`queue-chevron${expandedHealth ? ' open' : ''}`} aria-hidden='true' />
+        </button>
+        <div className='sync-health-details'>
+          <div className='health-inline'>
+            <span>Device: <strong>{getDeviceId()}</strong></span>
+            <span>Last Run: <strong>{health.lastRunAt ? new Date(health.lastRunAt).toLocaleTimeString() : 'Never'}</strong></span>
+            <span>Last Push: <strong>{health.lastPushAt ? new Date(health.lastPushAt).toLocaleTimeString() : 'Never'}</strong></span>
+            <span>Last Pull: <strong>{health.lastPullAt ? new Date(health.lastPullAt).toLocaleTimeString() : 'Never'}</strong></span>
+          </div>
+          {health.lastError ? (
+            <div className='sync-health-error'>⚠ {health.lastError}</div>
+          ) : null}
+        </div>
+      </article>
     </section>
   );
 }

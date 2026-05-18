@@ -9,7 +9,7 @@ import { startSyncLoop } from './sync/syncManager';
 const navItems = [
 	{ path: '/', label: 'Home', icon: '⌂', exact: true },
 	{ path: '/lead', label: 'Capture', icon: '+', exact: false },
-	{ path: '/sync', label: 'Queue', icon: '⟳', exact: false },
+	{ path: '/sync', label: 'Leads', icon: '≡', exact: false },
 ];
 
 export default function App() {

@@ -9,6 +9,14 @@ type Props = {
 };
 
 export function LeadCard({ lead, expanded, onToggle }: Props) {
+  const issues = [
+    { type: 'email' as const, label: 'Email', status: lead.emailSentStatus, message: lead.emailStatusMessage },
+    { type: 'database' as const, label: 'Database', status: lead.syncStatus, message: lead.databaseStatusMessage },
+    { type: 'brevo' as const, label: 'Brevo', status: lead.brevoSyncStatus, message: lead.brevoStatusMessage },
+  ].filter(({ status }) => statusVariant(status) !== 'success');
+
+  const hasIssues = issues.length > 0;
+
   return (
     <article className={`queue-item${expanded ? ' open' : ''}`}>
       <button
@@ -21,35 +29,55 @@ export function LeadCard({ lead, expanded, onToggle }: Props) {
         <div className='queue-item-header'>
           <div className='queue-item-identity'>
             <span className='queue-item-name'>{lead.firstName} {lead.lastName}</span>
-            <span className='queue-item-sub'>{lead.email || 'No email'}{lead.company ? ` · ${lead.company}` : ''}</span>
+            <span className='queue-item-sub'>
+              {[lead.company, lead.interestArea].filter(Boolean).join(' · ') || lead.email || 'No details'}
+            </span>
           </div>
           <div className='queue-item-right'>
-            <div className='status-icons' role='list' aria-label='Sync status'>
-              <StatusChip letter='E' status={lead.emailSentStatus} label='Email' />
-              <StatusChip letter='D' status={lead.syncStatus} label='Database' />
-              <StatusChip letter='B' status={lead.brevoSyncStatus} label='Brevo' />
-            </div>
+            {hasIssues ? (
+              <div className='status-icons' role='list' aria-label='Sync issues'>
+                {issues.map(({ label, type, status }) => (
+                  <StatusChip
+                    key={type}
+                    letter={label[0]}
+                    status={status}
+                    label={label}
+                  />
+                ))}
+              </div>
+            ) : null}
             <span className={`queue-chevron${expanded ? ' open' : ''}`} aria-hidden='true' />
           </div>
         </div>
       </button>
 
       <div id={`lead-${lead.uuid}`} className='queue-item-details' aria-hidden={!expanded}>
-        <div className='queue-status-lines'>
-          <StatusRow label='Email' status={lead.emailSentStatus} reason={statusReason('email', lead.emailSentStatus, lead.emailStatusMessage)} />
-          <StatusRow label='Database' status={lead.syncStatus} reason={statusReason('database', lead.syncStatus, lead.databaseStatusMessage)} />
-          <StatusRow label='Brevo' status={lead.brevoSyncStatus} reason={statusReason('brevo', lead.brevoSyncStatus, lead.brevoStatusMessage)} />
-        </div>
-
-        <div className='queue-detail-stack'>
-          {lead.phone ? <p><strong>Phone</strong>{lead.phone}</p> : null}
-          {lead.company ? <p><strong>Company</strong>{lead.company}</p> : null}
-          {lead.interestArea ? <p><strong>Interest</strong>{lead.interestArea}</p> : null}
-          <p><strong>Created</strong>{formatTs(lead.createdAt)}</p>
-          <p><strong>Last Synced</strong>{formatTs(lead.lastSyncedAt)}</p>
+        <div className='lead-contact-block'>
+          {lead.email ? (
+            <a href={`mailto:${lead.email}`} className='contact-link'>{lead.email}</a>
+          ) : null}
+          {lead.phone ? (
+            <a href={`tel:${lead.phone}`} className='contact-link'>{lead.phone}</a>
+          ) : null}
+          {lead.company ? <span className='contact-meta'>{lead.company}</span> : null}
         </div>
 
         {lead.notes ? <p className='queue-item-notes'>{lead.notes}</p> : null}
+
+        {hasIssues ? (
+          <div className='queue-status-lines'>
+            {issues.map(({ type, label, status, message }) => (
+              <StatusRow
+                key={type}
+                label={label}
+                status={status}
+                reason={statusReason(type, status, message)}
+              />
+            ))}
+          </div>
+        ) : null}
+
+        <p className='queue-item-timestamp'>{formatTs(lead.createdAt)}</p>
       </div>
     </article>
   );

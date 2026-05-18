@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { db } from '../storage/db';
 import { api } from '../api/index';
 import { syncNow } from '../sync/syncManager';
@@ -34,6 +35,7 @@ const initialForm: LeadForm = {
 const quickInterests = ['Product Demo', 'Pricing', 'Partnership', 'Support'];
 
 export function LeadPage() {
+	const navigate = useNavigate();
 	const [suppliers, setSuppliers] = useState<Supplier[]>([]);
 	const [form, setForm] = useState<LeadForm>(initialForm);
 	const [message, setMessage] = useState('');
@@ -84,9 +86,10 @@ export function LeadPage() {
 
 		await db.leads.put(lead);
 		setForm(initialForm);
-		setMessage('Lead saved. Ready for the next visitor.');
+		setMessage('');
 		setSaving(false);
 		syncNow();
+		navigate('/', { state: { saved: true } });
 	};
 
 	return (
