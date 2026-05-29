@@ -117,6 +117,26 @@ function supplierColor(name: string) {
 	return SUPPLIER_BRAND_COLORS[supplierKey(name)] || '#8fa3b8';
 }
 
+function isValidEmail(value: string) {
+	return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function normalizePhone(value: string) {
+	const trimmed = value.trim();
+	if (!trimmed) return '';
+
+	const compact = trimmed.replace(/[\s().-]/g, '');
+	if (compact.startsWith('00')) {
+		return `+${compact.slice(2)}`;
+	}
+	return compact;
+}
+
+function isValidPhone(value: string) {
+	if (!value) return true;
+	return /^\+?[1-9]\d{6,14}$/.test(value);
+}
+
 export function LeadPage() {
 	const navigate = useNavigate();
 	const [form, setForm] = useState<LeadForm>(initialForm);
@@ -152,8 +172,25 @@ export function LeadPage() {
 	};
 
 	const save = async () => {
-		if (!form.firstName.trim() || !form.email.trim()) {
+		const firstName = form.firstName.trim();
+		const lastName = form.lastName.trim();
+		const company = form.company.trim();
+		const email = form.email.trim().toLowerCase();
+		const phone = normalizePhone(form.phone);
+		const notes = form.notes.trim();
+
+		if (!firstName || !email) {
 			setMessage('Enter at least first name and email before saving.');
+			return;
+		}
+
+		if (!isValidEmail(email)) {
+			setMessage('Enter a valid email address before saving.');
+			return;
+		}
+
+		if (phone && !isValidPhone(phone)) {
+			setMessage('Enter phone numbers in a valid format, for example +27821234567.');
 			return;
 		}
 
@@ -173,12 +210,12 @@ export function LeadPage() {
 
 		const now = new Date().toISOString();
 		const lead: Lead = {
-			firstName: form.firstName,
-			lastName: form.lastName,
-			company: form.company,
-			email: form.email,
-			phone: form.phone,
-			notes: form.notes,
+			firstName,
+			lastName,
+			company,
+			email,
+			phone,
+			notes,
 			selectedSuppliers: form.selectedSuppliers,
 			interestArea,
 			uuid: crypto.randomUUID(),
@@ -237,6 +274,7 @@ export function LeadPage() {
 						value={form.email}
 						onChange={(e) => setField('email', e.target.value)}
 						autoComplete='email'
+						inputMode='email'
 					/>
 				</label>
 
@@ -247,6 +285,8 @@ export function LeadPage() {
 						value={form.phone}
 						onChange={(e) => setField('phone', e.target.value)}
 						autoComplete='tel'
+						inputMode='tel'
+						placeholder='+27821234567'
 					/>
 				</label>
 

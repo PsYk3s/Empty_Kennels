@@ -253,6 +253,30 @@ function parseIsoTimestamp(value, fallback = new Date().toISOString()) {
   return date.toISOString();
 }
 
+function normalizeEmail(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function normalizePhone(value) {
+  const trimmed = String(value || '').trim();
+  if (!trimmed) return '';
+
+  const compact = trimmed.replace(/[\s().-]/g, '');
+  if (compact.startsWith('00')) {
+    return `+${compact.slice(2)}`;
+  }
+  return compact;
+}
+
+function isValidPhone(value) {
+  if (!value) return true;
+  return /^\+?[1-9]\d{6,14}$/.test(value);
+}
+
 async function getEventName(fallback = 'Main Event') {
   const row = (
     await pool.query("SELECT value FROM app_settings WHERE key='event_name' LIMIT 1")
@@ -561,8 +585,19 @@ module.exports = async function handler(req, res) {
 
       for (const lead of leads) {
         try {
-          if (!lead.uuid || !lead.firstName || !lead.email) {
+          const email = normalizeEmail(lead.email);
+          const phone = normalizePhone(lead.phone);
+
+          if (!lead.uuid || !lead.firstName || !email) {
             throw new Error('Invalid lead payload');
+          }
+
+          if (!isValidEmail(email)) {
+            throw new Error('Invalid email address. Use a standard email format such as name@company.com.');
+          }
+
+          if (phone && !isValidPhone(phone)) {
+            throw new Error('Invalid phone number. Use an international format such as +27821234567.');
           }
 
           const createdAt = parseIsoTimestamp(lead.createdAt);
@@ -590,8 +625,8 @@ module.exports = async function handler(req, res) {
               lead.firstName,
               lead.lastName || '',
               lead.company || null,
-              lead.email,
-              lead.phone || null,
+              email,
+              phone || null,
               lead.interestArea || null,
               lead.notes || null,
               Number(lead.eventId || 1),
