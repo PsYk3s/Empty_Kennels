@@ -52,17 +52,40 @@ export function LeadCard({ lead, expanded, onToggle }: Props) {
           ))}
         </div>
 
-        <div className='lead-contact-block'>
+        <div className='lead-detail-list'>
           {lead.phone ? (
-            <a href={`tel:${lead.phone}`} className='contact-link'>{lead.phone}</a>
+            <p>
+              <span className='lead-detail-label'>Phone</span>
+              <a href={`tel:${lead.phone}`} className='lead-detail-link'>{lead.phone}</a>
+            </p>
           ) : null}
-          {lead.company ? <span className='contact-meta'>{lead.company}</span> : null}
-          {lead.interestArea ? <span className='contact-meta'>{lead.interestArea}</span> : null}
+
+          {lead.company ? (
+            <p>
+              <span className='lead-detail-label'>Company</span>
+              <span>{lead.company}</span>
+            </p>
+          ) : null}
+
+          {lead.interestArea ? (
+            <p>
+              <span className='lead-detail-label'>Interests</span>
+              <span>{lead.interestArea}</span>
+            </p>
+          ) : null}
+
+          {lead.notes ? (
+            <p>
+              <span className='lead-detail-label'>Notes</span>
+              <span className='lead-detail-notes'>{lead.notes}</span>
+            </p>
+          ) : null}
         </div>
 
-        {lead.notes ? <p className='queue-item-notes'>{lead.notes}</p> : null}
-
-        <p className='queue-item-timestamp'>{formatTs(lead.createdAt)}</p>
+        <p className='queue-item-timestamp'>
+          <span className='lead-detail-label'>Captured</span>
+          <span>{formatTs(lead.createdAt)}</span>
+        </p>
       </div>
     </article>
   );
