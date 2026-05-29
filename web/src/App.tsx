@@ -65,7 +65,10 @@ export default function App() {
 			<InstallPrompt />
 			<div className='app-shell'>
 			<header className='top-bar'>
-				<div className='brand-block'>
+				<div className={`brand-block${isHome ? '' : ' compact'}`}>
+					{!isHome ? (
+						<img src='/pb-logo.svg' alt='App logo' className='topbar-logo' />
+					) : null}
 					<h1>{appName}</h1>
 				</div>
 				<p className={`connection-pill ${online ? 'online' : 'offline'}`}>

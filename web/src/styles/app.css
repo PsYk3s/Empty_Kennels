@@ -45,6 +45,29 @@ body {
 	padding: 1rem 1rem 0.6rem;
 }
 
+.brand-block {
+	display: flex;
+	align-items: center;
+	gap: 0.55rem;
+	min-width: 0;
+}
+
+.brand-block.compact h1 {
+	font-size: 1.05rem;
+	font-weight: 650;
+	letter-spacing: -0.02em;
+	color: #ccd7e6;
+}
+
+.topbar-logo {
+	width: 28px;
+	height: 28px;
+	flex-shrink: 0;
+	display: block;
+	object-fit: contain;
+	opacity: 0.95;
+}
+
 .brand-block h1 {
 	margin: 0;
 	font-size: 1.55rem;
@@ -206,8 +229,8 @@ body {
 }
 
 .home-logo-image {
-	width: 50%;
-	max-width: 50%;
+	width: min(68vw, 520px);
+	max-width: 100%;
 	height: auto;
 	object-fit: contain;
 	display: block;
