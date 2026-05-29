@@ -8,15 +8,7 @@
       "destination": "/api/[...path].js"
     },
     {
-      "source": "/",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/lead",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/sync",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ],

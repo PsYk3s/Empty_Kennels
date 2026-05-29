@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { NavLink, Route, Routes, useLocation } from 'react-router-dom';
+import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { HomePage } from './pages/HomePage';
 import { LeadPage } from './pages/LeadPage';
 import { SyncPage } from './pages/SyncPage';
@@ -63,7 +63,7 @@ export default function App() {
 	return (
 		<>
 			<InstallPrompt />
-			<div className='app-shell'>
+			<div className={`app-shell${isHome ? ' home-shell' : ''}`}>
 			<header className='top-bar'>
 				<div className={`brand-block${isHome ? '' : ' compact'}`}>
 					{!isHome ? (
@@ -76,13 +76,14 @@ export default function App() {
 				</p>
 			</header>
 
-			<main className='app-content'>
+			<main className={`app-content${isHome ? ' home-content' : ''}`}>
 				<div key={location.pathname} className='route-transition'>
 					<Routes location={location}>
 						<Route path='/' element={<HomePage />} />
 						<Route path='/lead' element={<LeadPage />} />
 						<Route path='/sync' element={<SyncPage />} />
 						<Route path='/settings' element={<SettingsPage />} />
+						<Route path='*' element={<Navigate to='/' replace />} />
 					</Routes>
 				</div>
 			</main>

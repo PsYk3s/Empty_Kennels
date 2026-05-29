@@ -22,6 +22,7 @@ body {
 	margin: 0;
 	min-width: 320px;
 	min-height: 100vh;
+	min-height: 100dvh;
 	background:
 		radial-gradient(120% 100% at 15% -10%, rgba(124, 144, 167, 0.16) 0%, transparent 60%),
 		radial-gradient(100% 85% at 100% 5%, rgba(95, 111, 135, 0.12) 0%, transparent 58%),
@@ -30,12 +31,20 @@ body {
 
 #root {
 	min-height: 100vh;
+	min-height: 100dvh;
 }
 
 .app-shell {
 	min-height: 100vh;
+	min-height: 100dvh;
 	display: grid;
 	grid-template-rows: auto 1fr;
+}
+
+.app-shell.home-shell {
+	height: 100vh;
+	height: 100dvh;
+	overflow: hidden;
 }
 
 .top-bar {
@@ -106,6 +115,17 @@ body {
 	padding: 1.45rem 1.4rem calc(116px + env(safe-area-inset-bottom));
 	position: relative;
 	overflow: hidden;
+}
+
+.app-content.home-content {
+	height: 100%;
+	padding-top: 0.35rem;
+	padding-bottom: calc(116px + env(safe-area-inset-bottom));
+	overflow: hidden;
+}
+
+.home-content .route-transition {
+	height: 100%;
 }
 
 .app-meta {
@@ -201,9 +221,11 @@ body {
 	display: grid;
 	gap: 0.9rem;
 	align-content: center;
-	min-height: calc(100vh - 210px);
+	min-height: 100%;
+	height: 100%;
 	justify-items: center;
 	text-align: center;
+	overflow: hidden;
 }
 
 .intro-screen h2 {
