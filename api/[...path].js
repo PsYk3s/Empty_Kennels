@@ -75,32 +75,50 @@ async function syncLeadToBrevoList(lead) {
   if (!CONFIG.brevo.apiKey || !CONFIG.brevo.listId) {
     throw new Error('Brevo is enabled but BREVO_API_KEY or BREVO_LIST_ID is missing');
   }
-  const response = await fetch('https://api.brevo.com/v3/contacts', {
-    method: 'POST',
-    headers: {
-      accept: 'application/json',
-      'content-type': 'application/json',
-      'api-key': CONFIG.brevo.apiKey
-    },
-    body: JSON.stringify({
-      email: String(lead.email || '').trim(),
-      attributes: {
-        FIRSTNAME: String(lead.first_name || '').trim(),
-        LASTNAME: String(lead.last_name || '').trim(),
-        SMS: String(lead.phone || '').trim() || undefined,
-        COMPANY: String(lead.company || '').trim() || undefined
-      },
-      listIds: [CONFIG.brevo.listId],
-      updateEnabled: true
-    })
-  });
+  const requestBrevo = async (includeSms) => {
+    const attributes = {
+      FIRSTNAME: String(lead.first_name || '').trim(),
+      LASTNAME: String(lead.last_name || '').trim(),
+      COMPANY: String(lead.company || '').trim() || undefined
+    };
+    if (includeSms) {
+      attributes.SMS = String(lead.phone || '').trim() || undefined;
+    }
 
-  if (!response.ok) {
-    const text = await response.text().catch(() => 'Brevo request failed');
-    throw new Error(`${text || `HTTP ${response.status}`}. Verify BREVO_API_KEY, BREVO_LIST_ID, and contacts permissions.`);
+    return fetch('https://api.brevo.com/v3/contacts', {
+      method: 'POST',
+      headers: {
+        accept: 'application/json',
+        'content-type': 'application/json',
+        'api-key': CONFIG.brevo.apiKey
+      },
+      body: JSON.stringify({
+        email: String(lead.email || '').trim(),
+        attributes,
+        listIds: [CONFIG.brevo.listId],
+        updateEnabled: true
+      })
+    });
+  };
+
+  const hasPhone = Boolean(String(lead.phone || '').trim());
+  const firstAttempt = await requestBrevo(hasPhone);
+  if (firstAttempt.ok) {
+    return { status: 'synced', error: null };
   }
 
-  return { status: 'synced', error: null };
+  const firstError = await firstAttempt.text().catch(() => 'Brevo request failed');
+  if (hasPhone) {
+    const secondAttempt = await requestBrevo(false);
+    if (secondAttempt.ok) {
+      return { status: 'synced', error: null };
+    }
+
+    const secondError = await secondAttempt.text().catch(() => 'Brevo request failed');
+    throw new Error(`${secondError || `HTTP ${secondAttempt.status}`}. Brevo retry without phone also failed. Initial error: ${firstError || `HTTP ${firstAttempt.status}`}`);
+  }
+
+  throw new Error(`${firstError || `HTTP ${firstAttempt.status}`}. Verify BREVO_API_KEY, BREVO_LIST_ID, and contacts permissions.`);
 }
 
 async function sendLeadEmail({ lead, eventName }) {
@@ -138,9 +156,11 @@ async function sendFullLeadListEmail(leads) {
     lead.created_at ? new Date(lead.created_at).toISOString() : ''
   ]);
 
-  const csv = [headers, ...csvRows]
+  const csvBody = [headers, ...csvRows]
     .map((row) => row.map(csvEscape).join(','))
-    .join('\n');
+    .join('\r\n');
+
+  const csv = `\ufeffsep=,\r\n${csvBody}`;
 
   const body = `Lead Export (${new Date().toISOString()})\n\nTotal Leads: ${leads.length}\nAttached: lead-export.csv`;
   await transporter.sendMail({
@@ -270,11 +290,6 @@ function normalizePhone(value) {
     return `+${compact.slice(2)}`;
   }
   return compact;
-}
-
-function isValidPhone(value) {
-  if (!value) return true;
-  return /^\+?[1-9]\d{6,14}$/.test(value);
 }
 
 async function getEventName(fallback = 'Main Event') {
@@ -594,10 +609,6 @@ module.exports = async function handler(req, res) {
 
           if (!isValidEmail(email)) {
             throw new Error('Invalid email address. Use a standard email format such as name@company.com.');
-          }
-
-          if (phone && !isValidPhone(phone)) {
-            throw new Error('Invalid phone number. Use an international format such as +27821234567.');
           }
 
           const createdAt = parseIsoTimestamp(lead.createdAt);

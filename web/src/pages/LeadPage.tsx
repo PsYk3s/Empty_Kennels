@@ -132,11 +132,6 @@ function normalizePhone(value: string) {
 	return compact;
 }
 
-function isValidPhone(value: string) {
-	if (!value) return true;
-	return /^\+?[1-9]\d{6,14}$/.test(value);
-}
-
 export function LeadPage() {
 	const navigate = useNavigate();
 	const [form, setForm] = useState<LeadForm>(initialForm);
@@ -186,11 +181,6 @@ export function LeadPage() {
 
 		if (!isValidEmail(email)) {
 			setMessage('Enter a valid email address before saving.');
-			return;
-		}
-
-		if (phone && !isValidPhone(phone)) {
-			setMessage('Enter phone numbers in a valid format, for example +27821234567.');
 			return;
 		}
 

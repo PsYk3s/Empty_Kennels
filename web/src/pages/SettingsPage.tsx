@@ -61,9 +61,12 @@ function buildLocalLeadCsv(leads: Lead[]) {
     lead.brevoSyncStatus
   ]);
 
-  return [headers, ...rows]
+  const body = [headers, ...rows]
     .map((row) => row.map(csvEscape).join(','))
-    .join('\n');
+    .join('\r\n');
+
+  // Excel hint + UTF-8 BOM to open columns/cells reliably across locales.
+  return `\ufeffsep=,\r\n${body}`;
 }
 
 function downloadCsvBackup(csv: string, fileName: string) {
