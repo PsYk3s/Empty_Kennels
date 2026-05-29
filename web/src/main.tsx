@@ -4,6 +4,8 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import './styles/app.css';
 
+const SW_MIGRATION_KEY = 'pb_sw_migration_v2';
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
@@ -16,6 +18,31 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
     try {
+      // One-time cleanup for legacy service workers/caches that can force stale UI on refresh.
+      if (!localStorage.getItem(SW_MIGRATION_KEY)) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map((registration) => registration.unregister()));
+
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(
+            keys
+              .filter((key) =>
+                key === 'pb-app-v1'
+                || key.includes('workbox')
+                || key === 'api-cache'
+                || key === 'html-cache'
+                || key === 'static-cache'
+              )
+              .map((key) => caches.delete(key))
+          );
+        }
+
+        localStorage.setItem(SW_MIGRATION_KEY, '1');
+        window.location.reload();
+        return;
+      }
+
       const registration = await navigator.serviceWorker.register(
         '/sw.js',
         { scope: '/' }
