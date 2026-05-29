@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../storage/db';
 import { api } from '../api/index';
@@ -57,6 +57,40 @@ const PPE_CATEGORIES = [
 	'Fall Protection',
 	'Disposable PPE',
 ];
+
+const SUPPLIER_BRAND_COLORS: Record<string, string> = {
+	'3m': '#d62d2d',
+	bova: '#22974f',
+	bbf: '#2f6fe4',
+	dupont: '#d62d2d',
+	uvex: '#ffffff',
+	rebel: '#f2c230',
+	honeywell: '#d62d2d',
+	tyvek: '#2f6fe4',
+	tychem: '#f08a2b',
+	rhino: '#22974f',
+	inyathi: '#22974f',
+	mbworkwear: '#f08a2b',
+	neptun: '#f08a2b',
+	lemaitre: '#d62d2d',
+	frams: '#d62d2d',
+	jonsson: '#d62d2d',
+	dot: '#f08a2b',
+	pyramex: '#7ec7ff',
+	showa: '#9ee18a',
+	greenline: '#9ee18a',
+	drager: '#2f6fe4',
+	ansell: '#7ec7ff',
+	watt: '#d62d2d',
+};
+
+function supplierKey(value: string) {
+	return value.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function supplierColor(name: string) {
+	return SUPPLIER_BRAND_COLORS[supplierKey(name)] || '#8fa3b8';
+}
 
 export function LeadPage() {
 	const navigate = useNavigate();
@@ -247,16 +281,26 @@ export function LeadPage() {
 				<div className='full-width supplier-block'>
 					<p className='supplier-title'>Suppliers ({selectedCount} selected)</p>
 					<div className='quick-picks supplier-cloud' role='group' aria-label='Suppliers'>
-						{suppliers.map((supplier) => (
-							<button
-								type='button'
-								key={supplier.id}
-								onClick={() => toggleSupplier(supplier.id, !form.selectedSuppliers.includes(supplier.id))}
-								className={form.selectedSuppliers.includes(supplier.id) ? 'active' : ''}
-							>
-								{supplier.supplier_name}
-							</button>
-						))}
+						{suppliers.map((supplier) => {
+							const isSelected = form.selectedSuppliers.includes(supplier.id);
+							const color = supplierColor(supplier.supplier_name);
+							const style = {
+								'--supplier-color': color,
+								'--supplier-tint': `${color}22`,
+							} as CSSProperties;
+
+							return (
+								<button
+									type='button'
+									key={supplier.id}
+									onClick={() => toggleSupplier(supplier.id, !isSelected)}
+									className={`supplier-chip${isSelected ? ' active' : ''}`}
+									style={style}
+								>
+									{supplier.supplier_name}
+								</button>
+							);
+						})}
 					</div>
 				</div>
 			</div>
