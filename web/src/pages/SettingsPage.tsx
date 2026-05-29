@@ -6,6 +6,7 @@ import { useSyncHealth } from '../hooks/useSyncHealth';
 import { formatTs, type Lead, type LeadStatus } from '../types/lead';
 
 const EVENT_NAME_KEY = 'pb_event_name';
+const EVENT_NAME_SYNC_MS = 30000;
 
 type IssueSystem = 'email' | 'database' | 'brevo';
 
@@ -93,6 +94,25 @@ export function SettingsPage() {
   useEffect(() => {
     const saved = localStorage.getItem(EVENT_NAME_KEY);
     if (saved && saved.trim()) setEventName(saved);
+
+    const syncFromServer = async () => {
+      try {
+        const response = await api.get<{ name?: string }>('/settings/event-name');
+        const remote = String(response?.name || '').trim();
+        if (!remote) return;
+        setEventName(remote);
+        localStorage.setItem(EVENT_NAME_KEY, remote);
+      } catch {
+        // One-way best-effort sync only.
+      }
+    };
+
+    void syncFromServer();
+    const timer = window.setInterval(() => {
+      void syncFromServer();
+    }, EVENT_NAME_SYNC_MS);
+
+    return () => window.clearInterval(timer);
   }, []);
 
   const filteredIssueLog = issueLog.filter((item) => {
@@ -121,7 +141,12 @@ export function SettingsPage() {
 
   const saveEventName = () => {
     setSavingEvent(true);
-    localStorage.setItem(EVENT_NAME_KEY, eventName.trim() || 'Main Event');
+    const nextName = eventName.trim() || 'Main Event';
+    localStorage.setItem(EVENT_NAME_KEY, nextName);
+
+    // Best-effort push; app should continue even if this fails.
+    void api.post('/settings/event-name', { name: nextName }).catch(() => undefined);
+
     setNotice('Event name saved.');
     window.setTimeout(() => setSavingEvent(false), 200);
   };

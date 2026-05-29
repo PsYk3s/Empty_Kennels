@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../storage/db';
-import { api } from '../api/index';
 import { syncNow } from '../sync/syncManager';
 import type { Lead } from '../types/lead';
 
@@ -9,6 +8,32 @@ type Supplier = {
 	id: number;
 	supplier_name: string;
 };
+
+const SUPPLIER_OPTIONS: Supplier[] = [
+	{ id: 1, supplier_name: '3M' },
+	{ id: 2, supplier_name: 'Bova' },
+	{ id: 3, supplier_name: 'BBF' },
+	{ id: 4, supplier_name: 'DuPont' },
+	{ id: 5, supplier_name: 'uvex' },
+	{ id: 6, supplier_name: 'Rebel' },
+	{ id: 7, supplier_name: 'Honeywell' },
+	{ id: 8, supplier_name: 'Tyvek' },
+	{ id: 9, supplier_name: 'Tychem' },
+	{ id: 10, supplier_name: 'Rhino' },
+	{ id: 11, supplier_name: 'Inyathi' },
+	{ id: 12, supplier_name: 'MB Workwear' },
+	{ id: 13, supplier_name: 'Neptun' },
+	{ id: 14, supplier_name: 'Lemaitre' },
+	{ id: 15, supplier_name: 'Frams' },
+	{ id: 16, supplier_name: 'Jonsson' },
+	{ id: 17, supplier_name: 'Dot' },
+	{ id: 18, supplier_name: 'Pyramex' },
+	{ id: 19, supplier_name: 'Showa' },
+	{ id: 20, supplier_name: 'Greenline' },
+	{ id: 21, supplier_name: 'Drager' },
+	{ id: 22, supplier_name: 'Ansell' },
+	{ id: 23, supplier_name: 'Watt' },
+];
 
 type LeadForm = {
 	firstName: string;
@@ -94,17 +119,9 @@ function supplierColor(name: string) {
 
 export function LeadPage() {
 	const navigate = useNavigate();
-	const [suppliers, setSuppliers] = useState<Supplier[]>([]);
 	const [form, setForm] = useState<LeadForm>(initialForm);
 	const [message, setMessage] = useState('');
 	const [saving, setSaving] = useState(false);
-
-	useEffect(() => {
-		api
-			.get('/suppliers')
-			.then((result) => setSuppliers(Array.isArray(result) ? result : []))
-			.catch(() => setSuppliers([]));
-	}, []);
 
 	const selectedCount = useMemo(() => form.selectedSuppliers.length, [form.selectedSuppliers]);
 
@@ -237,7 +254,7 @@ export function LeadPage() {
 
 				<p className='form-section-label full-width'>PPE Interests</p>
 
-				<div className='full-width tag-cloud-block'>
+				<div className='full-width'>
 					<div className='quick-picks' role='group' aria-label='Lead interests'>
 						{PPE_INTERESTS.map((item) => (
 							<button
@@ -254,7 +271,7 @@ export function LeadPage() {
 
 				<p className='form-section-label full-width'>PPE Categories</p>
 
-				<div className='full-width tag-cloud-block'>
+				<div className='full-width'>
 					<div className='quick-picks' role='group' aria-label='PPE categories'>
 						{PPE_CATEGORIES.map((item) => (
 							<button
@@ -278,10 +295,10 @@ export function LeadPage() {
 					/>
 				</label>
 
-				<div className='full-width supplier-block'>
+				<div className='full-width'>
 					<p className='supplier-title'>Suppliers ({selectedCount} selected)</p>
 					<div className='quick-picks supplier-cloud' role='group' aria-label='Suppliers'>
-						{suppliers.map((supplier) => {
+						{SUPPLIER_OPTIONS.map((supplier) => {
 							const isSelected = form.selectedSuppliers.includes(supplier.id);
 							const color = supplierColor(supplier.supplier_name);
 							const style = {

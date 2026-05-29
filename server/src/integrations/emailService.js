@@ -20,20 +20,49 @@ export async function sendLeadEmail({ lead, eventName }) {
 }
 
 export async function sendFullLeadListEmail({ leads }) {
-  const rows = leads
-    .map((lead) => {
-      const name = [lead.first_name, lead.last_name].filter(Boolean).join(' ').trim();
-      return `${name || 'Unknown'} | ${lead.email || ''} | ${lead.phone || ''} | ${lead.company || ''} | ${lead.interest_area || ''}`;
-    })
+  const csvEscape = (value) => {
+    const text = String(value ?? '');
+    return `"${text.replace(/"/g, '""')}"`;
+  };
+
+  const headers = [
+    'First Name',
+    'Last Name',
+    'Email',
+    'Phone',
+    'Company',
+    'Interest Area',
+    'Created At'
+  ];
+
+  const csvRows = leads.map((lead) => [
+    lead.first_name || '',
+    lead.last_name || '',
+    lead.email || '',
+    lead.phone || '',
+    lead.company || '',
+    lead.interest_area || '',
+    lead.created_at ? new Date(lead.created_at).toISOString() : ''
+  ]);
+
+  const csv = [headers, ...csvRows]
+    .map((row) => row.map(csvEscape).join(','))
     .join('\n');
 
-  const body = `Lead Export (${new Date().toISOString()})\n\nTotal Leads: ${leads.length}\n\n${rows || 'No leads found.'}`;
+  const body = `Lead Export (${new Date().toISOString()})\n\nTotal Leads: ${leads.length}\nAttached: lead-export.csv`;
 
   await transporter.sendMail({
     from: APP_CONFIG.smtp.from || APP_CONFIG.smtp.user || ADMIN_EMAIL,
     to: ADMIN_EMAIL,
     subject: `Lead List Export (${leads.length})`,
-    text: body
+    text: body,
+    attachments: [
+      {
+        filename: `lead-export-${new Date().toISOString().slice(0, 10)}.csv`,
+        content: csv,
+        contentType: 'text/csv; charset=utf-8'
+      }
+    ]
   });
 }
 
