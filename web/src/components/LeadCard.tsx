@@ -1,5 +1,5 @@
-import type { Lead, LeadStatus } from '../types/lead';
-import { statusVariant, statusReason, formatTs, maskEmail } from '../types/lead';
+import type { Lead } from '../types/lead';
+import { statusVariant, formatTs, maskEmail } from '../types/lead';
 import { StatusChip } from './StatusChip';
 
 type Props = {
@@ -14,10 +14,6 @@ export function LeadCard({ lead, expanded, onToggle }: Props) {
     { type: 'database' as const, label: 'Database', status: lead.syncStatus, message: lead.databaseStatusMessage },
     { type: 'brevo' as const, label: 'Brevo', status: lead.brevoSyncStatus, message: lead.brevoStatusMessage },
   ];
-
-  const issues = systems.filter(({ status }) => statusVariant(status) !== 'success');
-
-  const hasIssues = issues.length > 0;
 
   return (
     <article className={`queue-item${expanded ? ' open' : ''}`}>
@@ -66,42 +62,8 @@ export function LeadCard({ lead, expanded, onToggle }: Props) {
 
         {lead.notes ? <p className='queue-item-notes'>{lead.notes}</p> : null}
 
-        {hasIssues ? (
-          <div className='queue-status-lines'>
-            {issues.map(({ type, label, status, message }) => (
-              <StatusRow
-                key={type}
-                label={label}
-                status={status}
-                reason={statusReason(type, status, message)}
-              />
-            ))}
-          </div>
-        ) : null}
-
         <p className='queue-item-timestamp'>{formatTs(lead.createdAt)}</p>
       </div>
     </article>
-  );
-}
-
-function StatusRow({
-  label,
-  status,
-  reason,
-}: {
-  label: string;
-  status: LeadStatus | undefined;
-  reason: string;
-}) {
-  const variant = statusVariant(status);
-  return (
-    <div className='queue-status-item'>
-      <div className='queue-status-header'>
-        <span className='queue-status-label'>{label}</span>
-        <span className={`queue-status-value status-text-${variant}`}>{status ?? 'pending'}</span>
-      </div>
-      <p className='queue-status-reason'>{reason}</p>
-    </div>
   );
 }

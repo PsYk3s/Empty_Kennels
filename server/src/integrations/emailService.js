@@ -10,16 +10,10 @@ const transporter = nodemailer.createTransport({
   auth: APP_CONFIG.smtp.user ? { user: APP_CONFIG.smtp.user, pass: APP_CONFIG.smtp.pass } : undefined
 });
 
-function uniqueEmails(values = []) {
-  return [...new Set(values.map((v) => String(v || '').trim().toLowerCase()).filter(Boolean))];
-}
-
-export async function sendLeadEmail({ lead, suppliers, eventName }) {
-  const cc = uniqueEmails(suppliers.map((s) => s.supplier_email)).filter((email) => email !== ADMIN_EMAIL);
+export async function sendLeadEmail({ lead, eventName }) {
   await transporter.sendMail({
     from: APP_CONFIG.smtp.from || APP_CONFIG.smtp.user || ADMIN_EMAIL,
     to: ADMIN_EMAIL,
-    cc,
     subject: `New Lead: ${lead.first_name} ${lead.last_name}`,
     text: `Event: ${eventName}\nName: ${lead.first_name} ${lead.last_name}\nEmail: ${lead.email}\nPhone: ${lead.phone || ''}\nCompany: ${lead.company || ''}\nInterest: ${lead.interest_area || ''}\nNotes: ${lead.notes || ''}`
   });

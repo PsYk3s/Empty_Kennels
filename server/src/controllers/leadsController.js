@@ -41,11 +41,7 @@ export async function batchCreateLeads(req, res, next) {
 
         try {
           if (emailSentStatus !== 'sent') {
-            const supplierRows = lead.selectedSuppliers.length
-              ? (await pool.query('SELECT * FROM suppliers WHERE id = ANY($1::int[])', [lead.selectedSuppliers])).rows
-              : [];
-
-            await sendLeadEmail({ lead: row, suppliers: supplierRows, eventName: `Event ${lead.eventId}` });
+            await sendLeadEmail({ lead: row, eventName: `Event ${lead.eventId}` });
             emailSentStatus = 'sent';
           }
         } catch (emailSendError) {

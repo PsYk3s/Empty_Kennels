@@ -16,7 +16,8 @@ type LeadForm = {
 	company: string;
 	email: string;
 	phone: string;
-	interestArea: string;
+	selectedInterests: string[];
+	selectedPpeCategories: string[];
 	notes: string;
 	selectedSuppliers: number[];
 };
@@ -27,12 +28,35 @@ const initialForm: LeadForm = {
 	company: '',
 	email: '',
 	phone: '',
-	interestArea: '',
+	selectedInterests: [],
+	selectedPpeCategories: [],
 	notes: '',
 	selectedSuppliers: [],
 };
 
-const quickInterests = ['Product Demo', 'Pricing', 'Partnership', 'Support'];
+const PPE_INTERESTS = [
+	'Bulk Pricing',
+	'Sample Request',
+	'Distributor Account',
+	'Stock Availability',
+	'Safety Standards Compliance',
+	'Tender Support',
+	'Private Label',
+	'On-Site Product Training',
+];
+
+const PPE_CATEGORIES = [
+	'Head Protection',
+	'Eye and Face Protection',
+	'Respiratory Protection',
+	'Hearing Protection',
+	'Hand Protection',
+	'Protective Clothing',
+	'High-Visibility Wear',
+	'Foot Protection',
+	'Fall Protection',
+	'Disposable PPE',
+];
 
 export function LeadPage() {
 	const navigate = useNavigate();
@@ -54,11 +78,22 @@ export function LeadPage() {
 		setForm((prev) => ({ ...prev, [key]: value }));
 	};
 
+	const toggleTag = (key: 'selectedInterests' | 'selectedPpeCategories', value: string) => {
+		setForm((prev) => ({
+			...prev,
+			[key]: prev[key].includes(value)
+				? prev[key].filter((item) => item !== value)
+				: [...prev[key], value],
+		}));
+	};
+
 	const toggleSupplier = (supplierId: number, checked: boolean) => {
 		setForm((prev) => ({
 			...prev,
 			selectedSuppliers: checked
-				? [...prev.selectedSuppliers, supplierId]
+				? prev.selectedSuppliers.includes(supplierId)
+					? prev.selectedSuppliers
+					: [...prev.selectedSuppliers, supplierId]
 				: prev.selectedSuppliers.filter((id) => id !== supplierId),
 		}));
 	};
@@ -72,9 +107,27 @@ export function LeadPage() {
 		setSaving(true);
 		setMessage('Saving lead...');
 
+		const interestArea = [
+			form.selectedInterests.length
+				? `Interests: ${form.selectedInterests.join(', ')}`
+				: '',
+			form.selectedPpeCategories.length
+				? `PPE Categories: ${form.selectedPpeCategories.join(', ')}`
+				: '',
+		]
+			.filter(Boolean)
+			.join(' | ');
+
 		const now = new Date().toISOString();
 		const lead: Lead = {
-			...form,
+			firstName: form.firstName,
+			lastName: form.lastName,
+			company: form.company,
+			email: form.email,
+			phone: form.phone,
+			notes: form.notes,
+			selectedSuppliers: form.selectedSuppliers,
+			interestArea,
 			uuid: crypto.randomUUID(),
 			eventId: 1,
 			createdAt: now,
@@ -148,28 +201,38 @@ export function LeadPage() {
 					/>
 				</label>
 
-				<p className='form-section-label full-width'>Interest &amp; Notes</p>
+				<p className='form-section-label full-width'>PPE Interests</p>
 
-				<label>
-					Interest Area
-					<input
-						value={form.interestArea}
-						onChange={(e) => setField('interestArea', e.target.value)}
-						placeholder='Demo, pricing, onboarding...'
-					/>
-				</label>
+				<div className='full-width tag-cloud-block'>
+					<div className='quick-picks' role='group' aria-label='Lead interests'>
+						{PPE_INTERESTS.map((item) => (
+							<button
+								type='button'
+								key={item}
+								onClick={() => toggleTag('selectedInterests', item)}
+								className={form.selectedInterests.includes(item) ? 'active' : ''}
+							>
+								{item}
+							</button>
+						))}
+					</div>
+				</div>
 
-				<div className='quick-picks'>
-					{quickInterests.map((item) => (
-						<button
-							type='button'
-							key={item}
-							onClick={() => setField('interestArea', item)}
-							className={form.interestArea === item ? 'active' : ''}
-						>
-							{item}
-						</button>
-					))}
+				<p className='form-section-label full-width'>PPE Categories</p>
+
+				<div className='full-width tag-cloud-block'>
+					<div className='quick-picks' role='group' aria-label='PPE categories'>
+						{PPE_CATEGORIES.map((item) => (
+							<button
+								type='button'
+								key={item}
+								onClick={() => toggleTag('selectedPpeCategories', item)}
+								className={form.selectedPpeCategories.includes(item) ? 'active' : ''}
+							>
+								{item}
+							</button>
+						))}
+					</div>
 				</div>
 
 				<label className='full-width'>
@@ -183,16 +246,16 @@ export function LeadPage() {
 
 				<div className='full-width supplier-block'>
 					<p className='supplier-title'>Suppliers ({selectedCount} selected)</p>
-					<div className='supplier-list'>
+					<div className='quick-picks supplier-cloud' role='group' aria-label='Suppliers'>
 						{suppliers.map((supplier) => (
-							<label key={supplier.id} className='supplier-item'>
-								<input
-									type='checkbox'
-									checked={form.selectedSuppliers.includes(supplier.id)}
-									onChange={(e) => toggleSupplier(supplier.id, e.target.checked)}
-								/>
-								<span>{supplier.supplier_name}</span>
-							</label>
+							<button
+								type='button'
+								key={supplier.id}
+								onClick={() => toggleSupplier(supplier.id, !form.selectedSuppliers.includes(supplier.id))}
+								className={form.selectedSuppliers.includes(supplier.id) ? 'active' : ''}
+							>
+								{supplier.supplier_name}
+							</button>
 						))}
 					</div>
 				</div>
