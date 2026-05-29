@@ -21,7 +21,7 @@ export function HomePage() {
     <section className='screen intro-screen'>
       <div className='home-logo-area'>
         <img
-          src='/icon-512.svg'
+          src='/pb-logo.svg'
           alt='Pienaar Bros logo'
           className='home-logo-image'
         />

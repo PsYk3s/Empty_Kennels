@@ -51,14 +51,14 @@ registerRoute(
   })
 );
 
-// Cache HTML with network fallback for app shell
+// Navigation requests should prefer the network so reloads stay consistent.
 registerRoute(
-  ({ request }) => request.destination === 'document',
+  ({ request }) => request.mode === 'navigate',
   new NetworkFirst({
     cacheName: 'html-cache',
     plugins: [
       new ExpirationPlugin({
-        maxAgeSeconds: 86400, // 1 day
+        maxAgeSeconds: 3600,
         maxEntries: 10,
       }),
     ],

@@ -52,82 +52,54 @@ export function InstallPrompt() {
     return null;
   }
 
+  if (!canInstall && !isIOS) {
+    return null;
+  }
+
   return (
     <div
       style={{
         position: 'fixed',
-        inset: 0,
-        background: 'linear-gradient(135deg, #0b1320 0%, #1a2642 100%)',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: '2rem',
+        left: '50%',
+        bottom: '1rem',
+        transform: 'translateX(-50%)',
+        width: 'min(520px, calc(100vw - 1.5rem))',
+        background: 'rgba(11, 16, 24, 0.92)',
+        border: '1px solid rgba(157, 178, 201, 0.22)',
+        borderRadius: '16px',
+        padding: '0.95rem 1rem',
         zIndex: 10000,
-        color: 'white',
-        textAlign: 'center',
+        color: '#dfe6ef',
+        textAlign: 'left',
+        backdropFilter: 'blur(14px)',
       }}
     >
-      <div style={{ maxWidth: '500px' }}>
-        <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>PB App</h1>
-        
-        <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem', opacity: 0.9 }}>
-          Install the app for the best experience
-        </p>
-        
-        <p style={{ fontSize: '0.95rem', marginBottom: '2rem', opacity: 0.75 }}>
-          This app works best when installed directly on your device. Get offline lead capture, 
-          automatic syncing, and instant updates.
-        </p>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {canInstall && (
-            <button
-              onClick={handleInstallClick}
-              style={{
-                background: '#4a9eff',
-                color: 'white',
-                border: 'none',
-                padding: '1rem 1.5rem',
-                fontSize: '1.05rem',
-                fontWeight: '600',
-                borderRadius: '12px',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#3a8ee8';
-                e.currentTarget.style.transform = 'translateY(-2px)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = '#4a9eff';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
-            >
-              Install App
-            </button>
-          )}
-
-          {isIOS && (
-            <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.1)', borderRadius: '8px' }}>
-              <p style={{ margin: '0.5rem 0', fontSize: '0.9rem' }}>
-                <strong>iPhone/iPad:</strong> Tap the share button and select "Add to Home Screen"
-              </p>
-            </div>
-          )}
-
-          {!canInstall && !isIOS && (
-            <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.1)', borderRadius: '8px' }}>
-              <p style={{ margin: '0.5rem 0', fontSize: '0.9rem' }}>
-                <strong>Android:</strong> Chrome will prompt you to install when ready, or tap your browser menu
-              </p>
-            </div>
-          )}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+        <div style={{ minWidth: 0 }}>
+          <p style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600 }}>Install this app</p>
+          <p style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: '#9fadc0' }}>
+            {isIOS ? 'Use Add to Home Screen.' : 'Install for offline capture and faster access.'}
+          </p>
         </div>
 
-        <p style={{ marginTop: '2rem', fontSize: '0.85rem', opacity: 0.6 }}>
-          Using this in Chrome limits functionality. Install for the full experience.
-        </p>
+        {canInstall && (
+          <button
+            onClick={handleInstallClick}
+            style={{
+              background: '#9db2c9',
+              color: '#0b1018',
+              border: 'none',
+              padding: '0.75rem 1rem',
+              fontSize: '0.95rem',
+              fontWeight: '700',
+              borderRadius: '10px',
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+          >
+            Install
+          </button>
+        )}
       </div>
     </div>
   );
