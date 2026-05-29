@@ -232,6 +232,13 @@ export function SettingsPage() {
   };
 
   const clearLeadList = async () => {
+    const pin = window.prompt('Enter PIN to clear all leads across devices:');
+    if (pin === null) return;
+    if (pin.trim() !== '1050') {
+      setNotice('Incorrect PIN. Leads were not deleted.');
+      return;
+    }
+
     const confirmed = window.confirm(
       'Create local CSV backup, email backup, then clear local leads? Leads are only deleted after email succeeds.'
     );
@@ -266,9 +273,13 @@ export function SettingsPage() {
         deviceId: getDeviceId()
       });
 
+      await api.post<{ ok?: boolean; clearedAt?: string }>('/leads/clear-all', {
+        pin: '1050'
+      });
+
       await db.leads.clear();
       window.dispatchEvent(new CustomEvent('pb-sync-cycle', { detail: { changed: true } }));
-      setNotice(`Backed up and emailed ${localLeads.length} leads, then cleared local list.`);
+      setNotice(`Backed up and emailed ${localLeads.length} leads, then cleared leads across all devices.`);
     } catch (e) {
       setNotice(`Local leads were not deleted: ${e instanceof Error ? e.message : 'Email backup failed.'}`);
     } finally {

@@ -43,6 +43,7 @@ type SyncOptions = {
 };
 
 const SYNC_CURSOR_KEY = 'pb_sync_cursor_v1';
+const CLEAR_MARKER_KEY = 'pb_leads_cleared_at_v1';
 const DEVICE_ID_KEY = 'pb_device_id_v1';
 const SYNC_HEALTH_KEY = 'pb_sync_health_v1';
 const SYNC_INTERVAL_MS = 15000;
@@ -131,8 +132,33 @@ function getSyncCursor(): string | null {
 }
 
 function setSyncCursor(value: string | null) {
-	if (!value) return;
+	if (!value) {
+		localStorage.removeItem(SYNC_CURSOR_KEY);
+		return;
+	}
 	localStorage.setItem(SYNC_CURSOR_KEY, value);
+}
+
+function getLocalClearMarker(): string | null {
+	return localStorage.getItem(CLEAR_MARKER_KEY);
+}
+
+function setLocalClearMarker(value: string) {
+	localStorage.setItem(CLEAR_MARKER_KEY, value);
+}
+
+function hasNewClearMarker(remote: string | null | undefined, local: string | null) {
+	if (!remote) return false;
+	if (!local) return true;
+
+	const remoteTs = new Date(remote).getTime();
+	const localTs = new Date(local).getTime();
+
+	if (Number.isNaN(remoteTs) || Number.isNaN(localTs)) {
+		return remote !== local;
+	}
+
+	return remoteTs > localTs;
 }
 
 function hasSyncStateChanged(before: LocalLead | null | undefined, after: LocalLead) {
@@ -221,11 +247,22 @@ async function pushPendingLeads(options: SyncOptions = {}) {
 }
 
 async function pullRemoteChanges() {
+	const clearMarkerResp = await api.get<{ clearedAt?: string | null }>('/sync/clear-marker').catch(() => ({ clearedAt: null }));
+	const remoteClearMarker = clearMarkerResp?.clearedAt || null;
+	const localClearMarker = getLocalClearMarker();
+	let changedCount = 0;
+
+	if (hasNewClearMarker(remoteClearMarker, localClearMarker)) {
+		await db.leads.clear();
+		setSyncCursor(null);
+		setLocalClearMarker(remoteClearMarker as string);
+		changedCount += 1;
+	}
+
 	const cursor = getSyncCursor();
 	const query = cursor ? `?since=${encodeURIComponent(cursor)}` : '';
 	const response = await api.get<ChangesResponse>(`/leads/changes${query}`);
 	const remoteLeads = response.leads || [];
-	let changedCount = 0;
 
 	for (const remote of remoteLeads) {
 		const local = await db.leads.get(remote.uuid);

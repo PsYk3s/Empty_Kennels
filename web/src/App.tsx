@@ -14,7 +14,6 @@ const navItems = [
 	{ path: '/', label: 'Home', icon: '⌂', exact: true },
 	{ path: '/lead', label: 'New Lead', icon: '+', exact: false },
 	{ path: '/sync', label: 'Leads', icon: '≡', exact: false },
-	{ path: '/settings', label: 'Settings', icon: '⚙', exact: false },
 ];
 
 export default function App() {
@@ -91,6 +90,7 @@ export default function App() {
 			{isHome ? (
 				<footer className='app-meta'>
 					<span>© 2026 Pienaar Bros</span>
+					<NavLink to='/settings' className='app-meta-link'>settings</NavLink>
 				</footer>
 			) : null}
 

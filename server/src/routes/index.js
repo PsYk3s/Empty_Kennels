@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { batchCreateLeads, emailLeadListToAdmin, emailLocalLeadBackupToAdmin, getLeadChanges } from '../controllers/leadsController.js';
+import { batchCreateLeads, clearAllLeads, emailLeadListToAdmin, emailLocalLeadBackupToAdmin, getClearMarker, getLeadChanges } from '../controllers/leadsController.js';
 import { pool } from '../database/db.js';
 import { verifySmtpConnection } from '../integrations/emailService.js';
 const router = Router();
@@ -17,7 +17,9 @@ async function ensureSettingsTable() {
 router.post('/leads/batch', batchCreateLeads);
 router.post('/leads/email-admin-list', emailLeadListToAdmin);
 router.post('/leads/email-local-backup', emailLocalLeadBackupToAdmin);
+router.post('/leads/clear-all', clearAllLeads);
 router.get('/leads/changes', getLeadChanges);
+router.get('/sync/clear-marker', getClearMarker);
 router.get('/settings/event-name', async (req, res) => {
   await ensureSettingsTable();
   const row = (

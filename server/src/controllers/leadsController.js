@@ -11,6 +11,16 @@ const syncQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(500).optional()
 });
 
+async function ensureSettingsTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS app_settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+}
+
 const localBackupSchema = z.object({
   csv: z.string().min(1),
   fileName: z.string().min(1).max(160).optional(),
@@ -130,6 +140,56 @@ export async function emailLocalLeadBackupToAdmin(req, res, next) {
     });
 
     res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+}
+
+export async function clearAllLeads(req, res, next) {
+  try {
+    const pin = String(req.body?.pin || '').trim();
+    if (pin !== '1050') {
+      return res.status(403).json({ ok: false, message: 'Invalid PIN' });
+    }
+
+    await ensureSettingsTable();
+    const clearedAt = new Date().toISOString();
+    const client = await pool.connect();
+
+    try {
+      await client.query('BEGIN');
+      await client.query('DELETE FROM lead_suppliers WHERE lead_id IN (SELECT id FROM leads)');
+      await client.query('DELETE FROM leads');
+      await client.query('DELETE FROM sync_logs').catch(() => undefined);
+      await client.query('DELETE FROM email_logs').catch(() => undefined);
+      await client.query('DELETE FROM brevo_logs').catch(() => undefined);
+      await client.query(
+        `INSERT INTO app_settings(key, value, updated_at)
+         VALUES($1,$2,NOW())
+         ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value, updated_at=NOW()`,
+        ['leads_cleared_at', clearedAt]
+      );
+      await client.query('COMMIT');
+      res.json({ ok: true, clearedAt });
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  } catch (e) {
+    next(e);
+  }
+}
+
+export async function getClearMarker(req, res, next) {
+  try {
+    await ensureSettingsTable();
+    const row = (
+      await pool.query('SELECT value FROM app_settings WHERE key=$1 LIMIT 1', ['leads_cleared_at'])
+    ).rows[0];
+
+    res.json({ clearedAt: row?.value || null });
   } catch (e) {
     next(e);
   }
