@@ -34,7 +34,7 @@ export function HomePage() {
       </div>
 
       <Link to='/lead' className='cta-button'>
-        Capture New Lead
+        New Lead
       </Link>
     </section>
   );

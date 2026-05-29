@@ -124,6 +124,8 @@ export function LeadPage() {
 	const [saving, setSaving] = useState(false);
 
 	const selectedCount = useMemo(() => form.selectedSuppliers.length, [form.selectedSuppliers]);
+	const selectedInterestsCount = useMemo(() => form.selectedInterests.length, [form.selectedInterests]);
+	const selectedCategoriesCount = useMemo(() => form.selectedPpeCategories.length, [form.selectedPpeCategories]);
 
 	const setField = (key: keyof LeadForm, value: string) => {
 		setForm((prev) => ({ ...prev, [key]: value }));
@@ -199,8 +201,7 @@ export function LeadPage() {
 	return (
 		<section className='screen'>
 			<div className='screen-head'>
-				<h2>New Lead</h2>
-				<p>Fill in the visitor's details below.</p>
+				<h2>Visitor Details</h2>
 			</div>
 
 			<div className='capture-grid'>
@@ -252,7 +253,10 @@ export function LeadPage() {
 					/>
 				</label>
 
-				<p className='form-section-label full-width'>PPE Interests</p>
+				<p className='form-section-label full-width'>
+					PPE Interests
+					<span className='section-count'>{selectedInterestsCount} selected</span>
+				</p>
 
 				<div className='full-width'>
 					<div className='quick-picks' role='group' aria-label='Lead interests'>
@@ -269,7 +273,10 @@ export function LeadPage() {
 					</div>
 				</div>
 
-				<p className='form-section-label full-width'>PPE Categories</p>
+				<p className='form-section-label full-width'>
+					PPE Categories
+					<span className='section-count'>{selectedCategoriesCount} selected</span>
+				</p>
 
 				<div className='full-width'>
 					<div className='quick-picks' role='group' aria-label='PPE categories'>
@@ -296,7 +303,10 @@ export function LeadPage() {
 				</label>
 
 				<div className='full-width'>
-					<p className='supplier-title'>Suppliers ({selectedCount} selected)</p>
+					<p className='form-section-label'>
+						Suppliers
+						<span className='section-count'>{selectedCount} selected</span>
+					</p>
 					<div className='quick-picks supplier-cloud' role='group' aria-label='Suppliers'>
 						{SUPPLIER_OPTIONS.map((supplier) => {
 							const isSelected = form.selectedSuppliers.includes(supplier.id);

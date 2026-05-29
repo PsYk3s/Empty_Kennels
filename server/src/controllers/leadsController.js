@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { pool } from '../database/db.js';
-import { sendFullLeadListEmail, sendLeadEmail } from '../integrations/emailService.js';
+import { sendCsvBackupEmail, sendFullLeadListEmail, sendLeadEmail } from '../integrations/emailService.js';
 import { syncLeadToBrevo } from '../integrations/brevoService.js';
 import { APP_CONFIG } from '../config.js';
 
@@ -9,6 +9,14 @@ const leadSchema = z.object({ uuid: z.string(), firstName: z.string(), lastName:
 const syncQuerySchema = z.object({
   since: z.string().datetime().optional(),
   limit: z.coerce.number().int().min(1).max(500).optional()
+});
+
+const localBackupSchema = z.object({
+  csv: z.string().min(1),
+  fileName: z.string().min(1).max(160).optional(),
+  count: z.number().int().min(0).optional(),
+  eventName: z.string().optional(),
+  deviceId: z.string().optional()
 });
 
 export async function batchCreateLeads(req, res, next) {
@@ -105,6 +113,23 @@ export async function emailLeadListToAdmin(req, res, next) {
 
     await sendFullLeadListEmail({ leads: rows });
     res.json({ ok: true, count: rows.length });
+  } catch (e) {
+    next(e);
+  }
+}
+
+export async function emailLocalLeadBackupToAdmin(req, res, next) {
+  try {
+    const payload = localBackupSchema.parse(req.body || {});
+    await sendCsvBackupEmail({
+      csv: payload.csv,
+      fileName: payload.fileName,
+      count: payload.count,
+      eventName: payload.eventName,
+      deviceId: payload.deviceId
+    });
+
+    res.json({ ok: true });
   } catch (e) {
     next(e);
   }

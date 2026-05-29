@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/index';
 import { db } from '../storage/db';
-import { getDeviceId } from '../sync/syncManager';
+import { getDeviceId, syncNow } from '../sync/syncManager';
 import { useSyncHealth } from '../hooks/useSyncHealth';
 import { formatTs, type Lead, type LeadStatus } from '../types/lead';
 
@@ -20,6 +20,63 @@ type IssueLogRow = {
   message: string;
   createdAt: string;
 };
+
+function csvEscape(value: unknown) {
+  const text = String(value ?? '');
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function buildLocalLeadCsv(leads: Lead[]) {
+  const headers = [
+    'UUID',
+    'First Name',
+    'Last Name',
+    'Email',
+    'Phone',
+    'Company',
+    'Interest Area',
+    'Notes',
+    'Created At',
+    'Updated At',
+    'Last Synced At',
+    'Database Status',
+    'Email Status',
+    'Brevo Status'
+  ];
+
+  const rows = leads.map((lead) => [
+    lead.uuid,
+    lead.firstName,
+    lead.lastName,
+    lead.email,
+    lead.phone,
+    lead.company,
+    lead.interestArea,
+    lead.notes,
+    lead.createdAt,
+    lead.updatedAt || '',
+    lead.lastSyncedAt || '',
+    lead.syncStatus,
+    lead.emailSentStatus,
+    lead.brevoSyncStatus
+  ]);
+
+  return [headers, ...rows]
+    .map((row) => row.map(csvEscape).join(','))
+    .join('\n');
+}
+
+function downloadCsvBackup(csv: string, fileName: string) {
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = fileName;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  URL.revokeObjectURL(url);
+}
 
 function issueLabel(system: IssueSystem) {
   if (system === 'database') return 'Database';
@@ -175,14 +232,48 @@ export function SettingsPage() {
   };
 
   const clearLeadList = async () => {
-    const confirmed = window.confirm('Clear all locally stored leads? This cannot be undone.');
+    const confirmed = window.confirm(
+      'Create local CSV backup, email backup, then clear local leads? Leads are only deleted after email succeeds.'
+    );
     if (!confirmed) return;
 
     setClearing(true);
-    await db.leads.clear();
-    window.dispatchEvent(new CustomEvent('pb-sync-cycle', { detail: { changed: true } }));
-    setNotice('Local lead list cleared.');
-    setClearing(false);
+    setNotice('Preparing backup...');
+
+    try {
+      // Best-effort final sync attempt before snapshotting local backup.
+      await syncNow({ retryDisabledBrevo: true }).catch(() => false);
+
+      const localLeads = (await db.leads.allList(5000)) as Lead[];
+      if (!localLeads.length) {
+        setNotice('No local leads to clear.');
+        return;
+      }
+
+      const csv = buildLocalLeadCsv(localLeads);
+      const fileStamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+      const fileName = `local-lead-backup-${fileStamp}.csv`;
+
+      // Save local backup before any delete attempt.
+      downloadCsvBackup(csv, fileName);
+
+      // Email the same CSV backup and only clear when email succeeds.
+      await api.post<{ ok?: boolean }>('/leads/email-local-backup', {
+        csv,
+        fileName,
+        count: localLeads.length,
+        eventName: eventName.trim() || 'Main Event',
+        deviceId: getDeviceId()
+      });
+
+      await db.leads.clear();
+      window.dispatchEvent(new CustomEvent('pb-sync-cycle', { detail: { changed: true } }));
+      setNotice(`Backed up and emailed ${localLeads.length} leads, then cleared local list.`);
+    } catch (e) {
+      setNotice(`Local leads were not deleted: ${e instanceof Error ? e.message : 'Email backup failed.'}`);
+    } finally {
+      setClearing(false);
+    }
   };
 
   return (

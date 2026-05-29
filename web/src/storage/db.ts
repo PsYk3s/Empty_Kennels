@@ -23,9 +23,15 @@ export const db = {
       return readLeads()
         .slice()
         .sort((a: any, b: any) => {
-          const at = new Date(a.createdAt || a.updatedAt || 0).getTime();
-          const bt = new Date(b.createdAt || b.updatedAt || 0).getTime();
-          return bt - at;
+          const capturedA = new Date(a.createdAt || 0).getTime();
+          const capturedB = new Date(b.createdAt || 0).getTime();
+          if (capturedA !== capturedB) return capturedB - capturedA;
+
+          const updatedA = new Date(a.updatedAt || 0).getTime();
+          const updatedB = new Date(b.updatedAt || 0).getTime();
+          if (updatedA !== updatedB) return updatedB - updatedA;
+
+          return String(b.uuid || '').localeCompare(String(a.uuid || ''));
         })
         .slice(0, limit);
     },

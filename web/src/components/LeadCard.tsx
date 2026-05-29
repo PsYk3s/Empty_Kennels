@@ -36,6 +36,7 @@ export function LeadCard({ lead, expanded, onToggle }: Props) {
           </div>
           <div className='queue-item-right'>
             <span className={`queue-chevron${expanded ? ' open' : ''}`} aria-hidden='true' />
+            <span className='queue-item-collapsed-time'>{formatTs(lead.createdAt)}</span>
           </div>
         </div>
       </button>
@@ -82,10 +83,6 @@ export function LeadCard({ lead, expanded, onToggle }: Props) {
           ) : null}
         </div>
 
-        <p className='queue-item-timestamp'>
-          <span className='lead-detail-label'>Captured</span>
-          <span>{formatTs(lead.createdAt)}</span>
-        </p>
       </div>
     </article>
   );

@@ -66,6 +66,35 @@ export async function sendFullLeadListEmail({ leads }) {
   });
 }
 
+export async function sendCsvBackupEmail({ csv, fileName, count, eventName, deviceId }) {
+  const safeName = String(fileName || `lead-backup-${new Date().toISOString().slice(0, 10)}.csv`)
+    .replace(/[^a-zA-Z0-9._-]/g, '_');
+
+  const bodyLines = [
+    `Local Lead Backup (${new Date().toISOString()})`,
+    '',
+    `Leads: ${Number.isFinite(count) ? count : 'Unknown'}`,
+    `Event: ${eventName || 'Main Event'}`,
+    `Device: ${deviceId || 'Unknown'}`,
+    '',
+    'Attached: local lead backup CSV'
+  ];
+
+  await transporter.sendMail({
+    from: APP_CONFIG.smtp.from || APP_CONFIG.smtp.user || ADMIN_EMAIL,
+    to: ADMIN_EMAIL,
+    subject: `Local Lead Backup (${Number.isFinite(count) ? count : 'Unknown'})`,
+    text: bodyLines.join('\n'),
+    attachments: [
+      {
+        filename: safeName,
+        content: csv,
+        contentType: 'text/csv; charset=utf-8'
+      }
+    ]
+  });
+}
+
 export async function verifySmtpConnection() {
   await transporter.verify();
 }
