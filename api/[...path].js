@@ -472,6 +472,13 @@ module.exports = async function handler(req, res) {
       return json(res, 200, { leads: rows.map(mapRowToLead), nextCursor });
     }
 
+    if (req.method === 'GET' && route === '/leads/manifest') {
+      const rows = (
+        await pool.query('SELECT uuid FROM leads ORDER BY uuid ASC')
+      ).rows;
+      return json(res, 200, { uuids: rows.map((row) => row.uuid) });
+    }
+
     if (req.method === 'POST' && route === '/device/register') {
       const body = parseBody(req);
       const deviceIdentifier = String(body.deviceIdentifier || '').trim();

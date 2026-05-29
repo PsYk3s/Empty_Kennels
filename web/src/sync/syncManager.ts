@@ -29,6 +29,10 @@ type ChangesResponse = {
 	nextCursor?: string | null;
 };
 
+type ManifestResponse = {
+	uuids?: string[];
+};
+
 export type SyncHealth = {
 	deviceId: string;
 	lastRunAt: string | null;
@@ -273,6 +277,21 @@ async function pullRemoteChanges() {
 		changedCount += 1;
 	}
 
+	const manifestResp = await api.get<ManifestResponse>('/leads/manifest').catch(() => ({ uuids: [] }));
+	const remoteUuidSet = new Set((manifestResp.uuids || []).map((uuid) => String(uuid)));
+	const localLeads = (await db.leads.all()) as LocalLead[];
+
+	for (const local of localLeads) {
+		const existsRemotely = remoteUuidSet.has(String(local.uuid || ''));
+		const syncedToServer = Boolean(local.lastSyncedAt) || local.syncStatus === 'synced';
+		const hasLocalPendingWrite = local.syncStatus === 'pending' || local.syncStatus === 'syncing';
+
+		if (!existsRemotely && syncedToServer && !hasLocalPendingWrite) {
+			await db.leads.remove(String(local.uuid));
+			changedCount += 1;
+		}
+	}
+
 	const cursor = getSyncCursor();
 	const query = cursor ? `?since=${encodeURIComponent(cursor)}` : '';
 	const response = await api.get<ChangesResponse>(`/leads/changes${query}`);
@@ -330,9 +349,10 @@ export async function syncNow(options: SyncOptions = {}) {
 	setSyncHealth({ lastRunAt: new Date().toISOString() });
 	try {
 		await registerDevice();
+		const prePushPullChanges = await pullRemoteChanges();
 		const pushChanges = await pushPendingLeads(options);
-		const pullChanges = await pullRemoteChanges();
-		hasChanges = (pushChanges + pullChanges) > 0;
+		const postPushPullChanges = pushChanges > 0 ? await pullRemoteChanges() : 0;
+		hasChanges = (prePushPullChanges + pushChanges + postPushPullChanges) > 0;
 		setSyncHealth({
 			lastSuccessAt: new Date().toISOString(),
 			lastError: null

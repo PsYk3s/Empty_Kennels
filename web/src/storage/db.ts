@@ -12,6 +12,9 @@ export const db = {
     async get(uuid: string) {
       return readLeads().find((l: any) => l.uuid === uuid) || null;
     },
+    async all() {
+      return readLeads().slice();
+    },
     async put(lead: any) {
       const leads = readLeads();
       const idx = leads.findIndex((l: any) => l.uuid === lead.uuid);
@@ -19,6 +22,9 @@ export const db = {
       writeLeads(leads);
     },
     async bulkPut(items: any[]) { for (const i of items) await this.put(i); },
+    async remove(uuid: string) {
+      writeLeads(readLeads().filter((l: any) => l.uuid !== uuid));
+    },
     async allList(limit = 100) {
       return readLeads()
         .slice()
