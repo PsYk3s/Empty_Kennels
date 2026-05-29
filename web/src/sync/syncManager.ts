@@ -80,6 +80,16 @@ export function getDeviceId() {
 	return value;
 }
 
+export function applyLocalClearMarker(value: string | null) {
+	if (!value) {
+		localStorage.removeItem(CLEAR_MARKER_KEY);
+		localStorage.removeItem(SYNC_CURSOR_KEY);
+		return;
+	}
+	setLocalClearMarker(value);
+	setSyncCursor(null);
+}
+
 function defaultSyncHealth(): SyncHealth {
 	return {
 		deviceId: getDeviceId(),
@@ -194,6 +204,10 @@ async function pushPendingLeads(options: SyncOptions = {}) {
 
 	for (const lead of leads) {
 		try {
+			await db.leads.put({
+				...lead,
+				syncStatus: 'syncing'
+			});
 			const resp = await api.post<{ synced?: SyncItem[] }>('/leads/batch', { leads: [lead] });
 			const remote = (resp.synced || [])[0];
 			const now = new Date().toISOString();
@@ -219,7 +233,7 @@ async function pushPendingLeads(options: SyncOptions = {}) {
 				await db.leads.put({
 					...nextLead,
 					lastSyncedAt: now,
-					updatedAt: now
+					updatedAt: lead.updatedAt || lead.createdAt
 				});
 				changedCount += 1;
 			}
@@ -235,7 +249,7 @@ async function pushPendingLeads(options: SyncOptions = {}) {
 			if (hasSyncStateChanged(lead as LocalLead, nextLead)) {
 				await db.leads.put({
 					...nextLead,
-					updatedAt: new Date().toISOString()
+					updatedAt: lead.updatedAt || lead.createdAt
 				});
 				changedCount += 1;
 			}
@@ -332,7 +346,7 @@ export async function syncNow(options: SyncOptions = {}) {
 				syncStatus: 'failed',
 				emailSentStatus: (l.emailSentStatus as string) || 'pending',
 				brevoSyncStatus: (l.brevoSyncStatus as string) || 'disabled',
-				updatedAt: new Date().toISOString()
+				updatedAt: l.updatedAt || l.createdAt
 			}))
 		);
 		setSyncHealth({

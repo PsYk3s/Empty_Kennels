@@ -190,12 +190,18 @@ export function LeadPage() {
 			brevoSyncStatus: 'pending',
 		};
 
-		await db.leads.put(lead);
-		setForm(initialForm);
-		setMessage('');
-		setSaving(false);
-		syncNow();
-		navigate('/', { state: { saved: true } });
+		try {
+			await db.leads.put(lead);
+			window.dispatchEvent(new CustomEvent('pb-sync-cycle', { detail: { changed: true } }));
+			setForm(initialForm);
+			setMessage('');
+			void syncNow();
+			navigate('/', { state: { saved: true } });
+		} catch (error) {
+			setMessage(error instanceof Error ? error.message : 'Could not save lead locally.');
+		} finally {
+			setSaving(false);
+		}
 	};
 
 	return (

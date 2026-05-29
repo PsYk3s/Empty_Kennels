@@ -52,10 +52,6 @@ function parseBody(req) {
   return req.body;
 }
 
-function uniqueEmails(values) {
-  return [...new Set((values || []).map((v) => String(v || '').trim().toLowerCase()).filter(Boolean))];
-}
-
 function smtpErrorMessage(error) {
   const text = error instanceof Error ? error.message : String(error || 'SMTP request failed');
   if (/auth|login|535|invalid/i.test(text)) {
@@ -107,31 +103,87 @@ async function syncLeadToBrevoList(lead) {
   return { status: 'synced', error: null };
 }
 
-async function sendLeadEmail({ lead, suppliers, eventName }) {
-  const cc = uniqueEmails((suppliers || []).map((s) => s.supplier_email)).filter((email) => email !== CONFIG.adminEmail);
+async function sendLeadEmail({ lead, eventName }) {
   await transporter.sendMail({
     from: CONFIG.smtp.from || CONFIG.smtp.user || CONFIG.adminEmail,
     to: CONFIG.adminEmail,
-    cc,
     subject: `New Lead: ${lead.first_name} ${lead.last_name}`,
     text: `Event: ${eventName}\nName: ${lead.first_name} ${lead.last_name}\nEmail: ${lead.email}\nPhone: ${lead.phone || ''}\nCompany: ${lead.company || ''}\nInterest: ${lead.interest_area || ''}\nNotes: ${lead.notes || ''}`
   });
 }
 
 async function sendFullLeadListEmail(leads) {
-  const rows = leads
-    .map((lead) => {
-      const name = [lead.first_name, lead.last_name].filter(Boolean).join(' ').trim();
-      return `${name || 'Unknown'} | ${lead.email || ''} | ${lead.phone || ''} | ${lead.company || ''} | ${lead.interest_area || ''}`;
-    })
+  const csvEscape = (value) => {
+    const text = String(value ?? '');
+    return `"${text.replace(/"/g, '""')}"`;
+  };
+
+  const headers = [
+    'First Name',
+    'Last Name',
+    'Email',
+    'Phone',
+    'Company',
+    'Interest Area',
+    'Created At'
+  ];
+
+  const csvRows = leads.map((lead) => [
+    lead.first_name || '',
+    lead.last_name || '',
+    lead.email || '',
+    lead.phone || '',
+    lead.company || '',
+    lead.interest_area || '',
+    lead.created_at ? new Date(lead.created_at).toISOString() : ''
+  ]);
+
+  const csv = [headers, ...csvRows]
+    .map((row) => row.map(csvEscape).join(','))
     .join('\n');
 
-  const body = `Lead Export (${new Date().toISOString()})\n\nTotal Leads: ${leads.length}\n\n${rows || 'No leads found.'}`;
+  const body = `Lead Export (${new Date().toISOString()})\n\nTotal Leads: ${leads.length}\nAttached: lead-export.csv`;
   await transporter.sendMail({
     from: CONFIG.smtp.from || CONFIG.smtp.user || CONFIG.adminEmail,
     to: CONFIG.adminEmail,
     subject: `Lead List Export (${leads.length})`,
-    text: body
+    text: body,
+    attachments: [
+      {
+        filename: `lead-export-${new Date().toISOString().slice(0, 10)}.csv`,
+        content: csv,
+        contentType: 'text/csv; charset=utf-8'
+      }
+    ]
+  });
+}
+
+async function sendCsvBackupEmail({ csv, fileName, count, eventName, deviceId }) {
+  const safeName = String(fileName || `lead-backup-${new Date().toISOString().slice(0, 10)}.csv`)
+    .replace(/[^a-zA-Z0-9._-]/g, '_');
+
+  const bodyLines = [
+    `Local Lead Backup (${new Date().toISOString()})`,
+    '',
+    `Leads: ${Number.isFinite(count) ? count : 'Unknown'}`,
+    `Event: ${eventName || 'Main Event'}`,
+    `Device: ${deviceId || 'Unknown'}`,
+    '',
+    'Attached: local lead backup CSV'
+  ];
+
+  await transporter.sendMail({
+    from: CONFIG.smtp.from || CONFIG.smtp.user || CONFIG.adminEmail,
+    to: CONFIG.adminEmail,
+    subject: `Local Lead Backup (${Number.isFinite(count) ? count : 'Unknown'})`,
+    text: bodyLines.join('\n'),
+    attachments: [
+      {
+        filename: safeName,
+        content: csv,
+        contentType: 'text/csv; charset=utf-8'
+      }
+    ]
   });
 }
 
@@ -191,6 +243,23 @@ function resolveRoute(req) {
   }
 }
 
+function parseIsoTimestamp(value, fallback = new Date().toISOString()) {
+  const text = String(value || '').trim();
+  const stamp = text || fallback;
+  const date = new Date(stamp);
+  if (Number.isNaN(date.getTime())) {
+    return fallback;
+  }
+  return date.toISOString();
+}
+
+async function getEventName(fallback = 'Main Event') {
+  const row = (
+    await pool.query("SELECT value FROM app_settings WHERE key='event_name' LIMIT 1")
+  ).rows[0];
+  return String(row?.value || fallback).trim() || fallback;
+}
+
 async function ensureSchema() {
   if (schemaReadyPromise) {
     return schemaReadyPromise;
@@ -248,6 +317,12 @@ async function ensureSchema() {
         sync_status TEXT,
         email_sent_status TEXT,
         brevo_sync_status TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS app_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
       );
     `);
 
@@ -333,6 +408,45 @@ module.exports = async function handler(req, res) {
       return json(res, 200, result.rows[0] || { pending: 0, last_sync: null });
     }
 
+    if (req.method === 'GET' && route === '/sync/clear-marker') {
+      const row = (
+        await pool.query("SELECT value FROM app_settings WHERE key='leads_cleared_at' LIMIT 1")
+      ).rows[0];
+      return json(res, 200, { clearedAt: row?.value || null });
+    }
+
+    if (req.method === 'GET' && route === '/settings/event-name') {
+      const row = (
+        await pool.query("SELECT value, updated_at FROM app_settings WHERE key='event_name' LIMIT 1")
+      ).rows[0];
+      return json(res, 200, {
+        name: row?.value || '',
+        updatedAt: row?.updated_at ? new Date(row.updated_at).toISOString() : null
+      });
+    }
+
+    if (req.method === 'POST' && route === '/settings/event-name') {
+      const body = parseBody(req);
+      const name = String(body.name || '').trim();
+      if (!name) return json(res, 400, { ok: false, message: 'Name is required' });
+
+      const row = (
+        await pool.query(
+          `INSERT INTO app_settings(key, value, updated_at)
+           VALUES('event_name',$1,NOW())
+           ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value, updated_at=NOW()
+           RETURNING value, updated_at`,
+          [name]
+        )
+      ).rows[0];
+
+      return json(res, 200, {
+        ok: true,
+        name: row.value,
+        updatedAt: new Date(row.updated_at).toISOString()
+      });
+    }
+
     if (req.method === 'GET' && route === '/leads/changes') {
       const since = typeof req.query.since === 'string' ? req.query.since : null;
       const parsedLimit = Number(req.query.limit || 200);
@@ -374,6 +488,7 @@ module.exports = async function handler(req, res) {
     }
 
     if (req.method === 'POST' && route === '/leads/email-admin-list') {
+      const body = parseBody(req);
       const rows = (
         await pool.query('SELECT first_name, last_name, email, phone, company, interest_area, created_at FROM leads ORDER BY created_at DESC')
       ).rows;
@@ -383,6 +498,53 @@ module.exports = async function handler(req, res) {
       } catch (smtpError) {
         return json(res, 200, { ok: false, count: rows.length, message: smtpErrorMessage(smtpError) });
       }
+    }
+
+    if (req.method === 'POST' && route === '/leads/email-local-backup') {
+      const body = parseBody(req);
+      const csv = String(body.csv || '');
+      if (!csv.trim()) {
+        return json(res, 400, { error: 'csv is required' });
+      }
+
+      await sendCsvBackupEmail({
+        csv,
+        fileName: body.fileName,
+        count: Number(body.count || 0),
+        eventName: body.eventName,
+        deviceId: body.deviceId
+      });
+
+      return json(res, 200, { ok: true });
+    }
+
+    if (req.method === 'POST' && route === '/leads/clear-all') {
+      const body = parseBody(req);
+      const pin = String(body.pin || '').trim();
+      if (pin !== '1050') {
+        return json(res, 403, { ok: false, message: 'Invalid PIN' });
+      }
+
+      const clearedAt = new Date().toISOString();
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        await client.query('DELETE FROM leads');
+        await client.query(
+          `INSERT INTO app_settings(key, value, updated_at)
+           VALUES('leads_cleared_at',$1,NOW())
+           ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value, updated_at=NOW()`,
+          [clearedAt]
+        );
+        await client.query('COMMIT');
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
+
+      return json(res, 200, { ok: true, clearedAt });
     }
 
     if (req.method === 'POST' && route === '/leads/batch') {
@@ -396,21 +558,25 @@ module.exports = async function handler(req, res) {
             throw new Error('Invalid lead payload');
           }
 
+          const createdAt = parseIsoTimestamp(lead.createdAt);
+          const updatedAt = parseIsoTimestamp(lead.updatedAt || lead.createdAt || createdAt, createdAt);
+
           const inserted = await pool.query(
             `INSERT INTO leads (uuid,first_name,last_name,company,email,phone,interest_area,notes,event_id,created_at,updated_at,sync_status,email_sent_status,brevo_sync_status)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW(),'synced','pending',CASE WHEN $11 THEN 'pending' ELSE 'disabled' END)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'synced','pending',CASE WHEN $12 THEN 'pending' ELSE 'disabled' END)
              ON CONFLICT (uuid) DO UPDATE SET
-               first_name = EXCLUDED.first_name,
-               last_name = EXCLUDED.last_name,
-               company = EXCLUDED.company,
-               email = EXCLUDED.email,
-               phone = EXCLUDED.phone,
-               interest_area = EXCLUDED.interest_area,
-               notes = EXCLUDED.notes,
-               event_id = EXCLUDED.event_id,
-               updated_at = NOW(),
+               first_name = CASE WHEN COALESCE(EXCLUDED.updated_at, EXCLUDED.created_at) >= COALESCE(leads.updated_at, leads.created_at) THEN EXCLUDED.first_name ELSE leads.first_name END,
+               last_name = CASE WHEN COALESCE(EXCLUDED.updated_at, EXCLUDED.created_at) >= COALESCE(leads.updated_at, leads.created_at) THEN EXCLUDED.last_name ELSE leads.last_name END,
+               company = CASE WHEN COALESCE(EXCLUDED.updated_at, EXCLUDED.created_at) >= COALESCE(leads.updated_at, leads.created_at) THEN EXCLUDED.company ELSE leads.company END,
+               email = CASE WHEN COALESCE(EXCLUDED.updated_at, EXCLUDED.created_at) >= COALESCE(leads.updated_at, leads.created_at) THEN EXCLUDED.email ELSE leads.email END,
+               phone = CASE WHEN COALESCE(EXCLUDED.updated_at, EXCLUDED.created_at) >= COALESCE(leads.updated_at, leads.created_at) THEN EXCLUDED.phone ELSE leads.phone END,
+               interest_area = CASE WHEN COALESCE(EXCLUDED.updated_at, EXCLUDED.created_at) >= COALESCE(leads.updated_at, leads.created_at) THEN EXCLUDED.interest_area ELSE leads.interest_area END,
+               notes = CASE WHEN COALESCE(EXCLUDED.updated_at, EXCLUDED.created_at) >= COALESCE(leads.updated_at, leads.created_at) THEN EXCLUDED.notes ELSE leads.notes END,
+               event_id = CASE WHEN COALESCE(EXCLUDED.updated_at, EXCLUDED.created_at) >= COALESCE(leads.updated_at, leads.created_at) THEN EXCLUDED.event_id ELSE leads.event_id END,
+               created_at = LEAST(leads.created_at, EXCLUDED.created_at),
+               updated_at = GREATEST(COALESCE(leads.updated_at, leads.created_at), COALESCE(EXCLUDED.updated_at, EXCLUDED.created_at)),
                sync_status = 'synced',
-               brevo_sync_status = CASE WHEN leads.brevo_sync_status = 'synced' THEN 'synced' WHEN $11 THEN 'pending' ELSE 'disabled' END
+               brevo_sync_status = CASE WHEN leads.brevo_sync_status = 'synced' THEN 'synced' WHEN $12 THEN 'pending' ELSE 'disabled' END
              RETURNING *`,
             [
               lead.uuid,
@@ -422,7 +588,8 @@ module.exports = async function handler(req, res) {
               lead.interestArea || null,
               lead.notes || null,
               Number(lead.eventId || 1),
-              lead.createdAt || new Date().toISOString(),
+              createdAt,
+              updatedAt,
               CONFIG.brevo.enabled
             ]
           );
@@ -435,12 +602,7 @@ module.exports = async function handler(req, res) {
 
           try {
             if (emailSentStatus !== 'sent') {
-              const selectedSuppliers = Array.isArray(lead.selectedSuppliers) ? lead.selectedSuppliers : [];
-              const supplierRows = selectedSuppliers.length
-                ? (await pool.query('SELECT * FROM suppliers WHERE id = ANY($1::int[])', [selectedSuppliers.map((id) => Number(id))])).rows
-                : [];
-
-              await sendLeadEmail({ lead: row, suppliers: supplierRows, eventName: `Event ${Number(lead.eventId || 1)}` });
+              await sendLeadEmail({ lead: row, eventName: await getEventName(`Event ${Number(lead.eventId || 1)}`) });
               emailSentStatus = 'sent';
             }
           } catch (emailSendError) {
@@ -459,7 +621,7 @@ module.exports = async function handler(req, res) {
           }
 
           await pool.query(
-            'UPDATE leads SET sync_status=$2, email_sent_status=$3, brevo_sync_status=$4, last_synced_at=NOW(), updated_at=NOW() WHERE uuid=$1',
+            'UPDATE leads SET sync_status=$2, email_sent_status=$3, brevo_sync_status=$4, last_synced_at=NOW() WHERE uuid=$1',
             [lead.uuid, 'synced', emailSentStatus, brevoSyncStatus]
           );
 

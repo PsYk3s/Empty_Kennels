@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/index';
 import { db } from '../storage/db';
-import { getDeviceId, syncNow } from '../sync/syncManager';
+import { applyLocalClearMarker, getDeviceId, syncNow } from '../sync/syncManager';
 import { useSyncHealth } from '../hooks/useSyncHealth';
 import { formatTs, type Lead, type LeadStatus } from '../types/lead';
 
@@ -240,7 +240,7 @@ export function SettingsPage() {
     }
 
     const confirmed = window.confirm(
-      'Create local CSV backup, email backup, then clear local leads? Leads are only deleted after email succeeds.'
+      'Create a local CSV backup, email that backup, then clear all leads across devices. Leads are only deleted after the backup email succeeds.'
     );
     if (!confirmed) return;
 
@@ -252,34 +252,36 @@ export function SettingsPage() {
       await syncNow({ retryDisabledBrevo: true }).catch(() => false);
 
       const localLeads = (await db.leads.allList(5000)) as Lead[];
-      if (!localLeads.length) {
-        setNotice('No local leads to clear.');
-        return;
+      if (localLeads.length) {
+        const csv = buildLocalLeadCsv(localLeads);
+        const fileStamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+        const fileName = `local-lead-backup-${fileStamp}.csv`;
+
+        // Save local backup before any delete attempt.
+        downloadCsvBackup(csv, fileName);
+
+        // Email the same CSV backup and only clear when email succeeds.
+        await api.post<{ ok?: boolean }>('/leads/email-local-backup', {
+          csv,
+          fileName,
+          count: localLeads.length,
+          eventName: eventName.trim() || 'Main Event',
+          deviceId: getDeviceId()
+        });
       }
 
-      const csv = buildLocalLeadCsv(localLeads);
-      const fileStamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
-      const fileName = `local-lead-backup-${fileStamp}.csv`;
-
-      // Save local backup before any delete attempt.
-      downloadCsvBackup(csv, fileName);
-
-      // Email the same CSV backup and only clear when email succeeds.
-      await api.post<{ ok?: boolean }>('/leads/email-local-backup', {
-        csv,
-        fileName,
-        count: localLeads.length,
-        eventName: eventName.trim() || 'Main Event',
-        deviceId: getDeviceId()
-      });
-
-      await api.post<{ ok?: boolean; clearedAt?: string }>('/leads/clear-all', {
+      const clearResult = await api.post<{ ok?: boolean; clearedAt?: string }>('/leads/clear-all', {
         pin: '1050'
       });
 
       await db.leads.clear();
+      applyLocalClearMarker(clearResult.clearedAt || null);
       window.dispatchEvent(new CustomEvent('pb-sync-cycle', { detail: { changed: true } }));
-      setNotice(`Backed up and emailed ${localLeads.length} leads, then cleared leads across all devices.`);
+      setNotice(
+        localLeads.length
+          ? `Backed up and emailed ${localLeads.length} leads, then cleared leads across all devices.`
+          : 'Cleared leads across all devices. There were no local leads to back up on this device.'
+      );
     } catch (e) {
       setNotice(`Local leads were not deleted: ${e instanceof Error ? e.message : 'Email backup failed.'}`);
     } finally {
@@ -312,7 +314,7 @@ export function SettingsPage() {
             {emailing ? 'Emailing…' : 'Export / Email Lead List'}
           </button>
           <button type='button' className='danger-button' onClick={clearLeadList} disabled={clearing}>
-            {clearing ? 'Clearing…' : 'Clear Local Leads'}
+            {clearing ? 'Clearing…' : 'Backup and Clear All Leads'}
           </button>
         </div>
 
