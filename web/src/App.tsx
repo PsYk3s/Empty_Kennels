@@ -7,6 +7,9 @@ import { SettingsPage } from './pages/SettingsPage';
 import { InstallPrompt } from './components/InstallPrompt';
 import { startSyncLoop } from './sync/syncManager';
 
+const EVENT_NAME_KEY = 'pb_event_name';
+const EVENT_NAME_CHANGED_EVENT = 'pb-event-name-changed';
+
 const navItems = [
 	{ path: '/', label: 'Home', icon: '⌂', exact: true },
 	{ path: '/lead', label: 'Capture', icon: '+', exact: false },
@@ -15,7 +18,9 @@ const navItems = [
 
 export default function App() {
 	const [online, setOnline] = useState(navigator.onLine);
+	const [appName, setAppName] = useState(() => localStorage.getItem(EVENT_NAME_KEY) || 'Main Event');
 	const location = useLocation();
+	const isHome = location.pathname === '/';
 
 	useEffect(() => {
 		const stopSyncLoop = startSyncLoop();
@@ -33,13 +38,35 @@ export default function App() {
 		};
 	}, []);
 
+	useEffect(() => {
+		const applyNameFromStorage = () => {
+			const next = localStorage.getItem(EVENT_NAME_KEY) || 'Main Event';
+			setAppName(next.trim() || 'Main Event');
+		};
+
+		const onStorage = (event: StorageEvent) => {
+			if (event.key === EVENT_NAME_KEY) {
+				applyNameFromStorage();
+			}
+		};
+
+		window.addEventListener('storage', onStorage);
+		window.addEventListener(EVENT_NAME_CHANGED_EVENT, applyNameFromStorage);
+		applyNameFromStorage();
+
+		return () => {
+			window.removeEventListener('storage', onStorage);
+			window.removeEventListener(EVENT_NAME_CHANGED_EVENT, applyNameFromStorage);
+		};
+	}, []);
+
 	return (
 		<>
 			<InstallPrompt />
 			<div className='app-shell'>
 			<header className='top-bar'>
 				<div className='brand-block'>
-					<h1>PB App</h1>
+					<h1>{appName}</h1>
 				</div>
 				<p className={`connection-pill ${online ? 'online' : 'offline'}`}>
 					{online ? 'Online' : 'Offline'}
@@ -57,10 +84,12 @@ export default function App() {
 				</div>
 			</main>
 
-			<footer className='app-meta'>
-				<span>© 2026 Pienaar Bros</span>
-				<NavLink to='/settings' className='app-meta-link'>settings</NavLink>
-			</footer>
+			{isHome ? (
+				<footer className='app-meta'>
+					<span>© 2026 Pienaar Bros</span>
+					<NavLink to='/settings' className='app-meta-link'>settings</NavLink>
+				</footer>
+			) : null}
 
 			<nav className='bottom-nav' aria-label='Primary'>
 				{navItems.map((item) => (

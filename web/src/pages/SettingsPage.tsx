@@ -6,6 +6,7 @@ import { useSyncHealth } from '../hooks/useSyncHealth';
 import { formatTs, type Lead, type LeadStatus } from '../types/lead';
 
 const EVENT_NAME_KEY = 'pb_event_name';
+const EVENT_NAME_CHANGED_EVENT = 'pb-event-name-changed';
 const EVENT_NAME_SYNC_MS = 30000;
 
 type IssueSystem = 'email' | 'database' | 'brevo';
@@ -102,6 +103,7 @@ export function SettingsPage() {
         if (!remote) return;
         setEventName(remote);
         localStorage.setItem(EVENT_NAME_KEY, remote);
+        window.dispatchEvent(new CustomEvent(EVENT_NAME_CHANGED_EVENT, { detail: { name: remote } }));
       } catch {
         // One-way best-effort sync only.
       }
@@ -143,6 +145,7 @@ export function SettingsPage() {
     setSavingEvent(true);
     const nextName = eventName.trim() || 'Main Event';
     localStorage.setItem(EVENT_NAME_KEY, nextName);
+    window.dispatchEvent(new CustomEvent(EVENT_NAME_CHANGED_EVENT, { detail: { name: nextName } }));
 
     // Best-effort push; app should continue even if this fails.
     void api.post('/settings/event-name', { name: nextName }).catch(() => undefined);

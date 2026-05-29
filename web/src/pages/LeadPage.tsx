@@ -303,6 +303,7 @@ export function LeadPage() {
 							const color = supplierColor(supplier.supplier_name);
 							const style = {
 								'--supplier-color': color,
+								'--supplier-stroke': `${color}66`,
 								'--supplier-tint': `${color}22`,
 							} as CSSProperties;
 

@@ -197,50 +197,50 @@ body {
 .home-logo-area {
 	display: flex;
 	justify-content: center;
-	padding: 1.5rem 0 0.75rem;
+	padding: 1.2rem 0 0.35rem;
 }
 
-.logo-placeholder {
-	width: 84px;
-	height: 84px;
-	border-radius: 22px;
-	background: linear-gradient(145deg, #d6dfea, #bcc8d7);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	box-shadow: 0 10px 22px rgba(0, 0, 0, 0.28);
+.home-logo-image {
+	width: min(300px, 70vw);
+	height: auto;
+	max-height: 130px;
+	object-fit: contain;
+	filter: brightness(0) invert(1);
+	opacity: 0.96;
+	animation: fadeUp 420ms ease;
 }
 
-.logo-text {
-	font-size: 1.9rem;
-	font-weight: 800;
-	color: #111a26;
-	letter-spacing: -0.02em;
+@keyframes fadeUp {
+	from {
+		opacity: 0;
+		transform: translateY(10px);
+	}
+	to {
+		opacity: 0.96;
+		transform: translateY(0);
+	}
 }
 
 .thanks-slot {
-	min-height: 52px;
+	min-height: 46px;
 	display: grid;
 	place-items: center;
 }
 
-.thanks-banner {
+.home-message {
 	text-align: center;
-	padding: 0.75rem 1rem;
-	border-radius: 12px;
-	background: rgba(157, 178, 201, 0.14);
-	border: 1px solid rgba(157, 178, 201, 0.36);
-	color: #c8d9ea;
+	margin: 0;
+	padding: 0.35rem 0.7rem;
+	color: #d7e1ec;
 	font-weight: 600;
-	font-size: 1rem;
-	opacity: 0;
-	transform: translateY(-4px);
-	transition: opacity 260ms ease, transform 260ms ease;
+	font-size: 1.08rem;
+	letter-spacing: 0.01em;
+	transition: color 220ms ease, opacity 220ms ease, transform 220ms ease;
 }
 
-.thanks-banner.visible {
-	opacity: 1;
-	transform: translateY(0);
+.home-message.is-thanks {
+	color: #e9f2fd;
+	transform: translateY(-1px);
 }
 
 @keyframes thanksIn {
@@ -372,23 +372,23 @@ textarea {
 }
 
 .supplier-cloud .supplier-chip {
-	border: 1.5px solid var(--supplier-color, var(--border-dark));
+	border: 1.5px solid var(--supplier-stroke, var(--border-dark));
 	background: rgba(12, 18, 28, 0.72);
-	color: var(--supplier-color, #c8d6e4);
+	color: #c1d2e5;
 	transition: transform 0.24s ease, background-color 0.24s ease, color 0.24s ease, box-shadow 0.24s ease;
 }
 
 .supplier-cloud .supplier-chip:hover {
 	background: var(--supplier-tint, rgba(157, 178, 201, 0.16));
-	box-shadow: 0 0 0 1px var(--supplier-color, #9db2c9);
+	box-shadow: 0 0 0 1px var(--supplier-stroke, #9db2c9);
 	transform: translateY(-1px);
 }
 
 .supplier-cloud .supplier-chip.active {
-	border-color: var(--supplier-color, #9db2c9);
-	background: var(--supplier-color, #9db2c9);
-	color: #0c1320;
-	box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+	border-color: var(--supplier-stroke, #9db2c9);
+	background: var(--supplier-tint, rgba(157, 178, 201, 0.24));
+	color: #c1d2e5;
+	box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
 .supplier-list {
@@ -1303,7 +1303,7 @@ textarea {
 	gap: 0.2rem;
 	border-radius: 14px;
 	border: 1px solid var(--border-dark);
-	background: var(--light-green);
+	background: transparent;
 	color: var(--accent-green);
 	text-decoration: none;
 	padding: 0.5rem 0.42rem 0.46rem;
@@ -1328,9 +1328,9 @@ textarea {
 }
 
 .nav-pill.active {
-	background: var(--accent-green);
-	color: #0f1410;
-	border-color: var(--accent-green);
+	background: transparent;
+	color: #dce8f6;
+	border-color: rgba(157, 178, 201, 0.9);
 }
 
 @media (min-width: 860px) {

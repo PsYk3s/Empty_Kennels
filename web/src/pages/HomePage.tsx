@@ -20,21 +20,17 @@ export function HomePage() {
   return (
     <section className='screen intro-screen'>
       <div className='home-logo-area'>
-        {/* Logo image goes here once uploaded */}
-        <div className='logo-placeholder'>
-          <span className='logo-text'>PB</span>
-        </div>
+        <img
+          src='/icon-512.svg'
+          alt='Pienaar Bros logo'
+          className='home-logo-image'
+        />
       </div>
 
       <div className='thanks-slot' aria-live='polite'>
-        <div className={`thanks-banner${showThanks ? ' visible' : ''}`}>
-          ✓ Lead saved — thank you!
-        </div>
-      </div>
-
-      <div className='home-hero'>
-        <h2>Lead Capture</h2>
-        <p className='home-sub'>Ready for the next visitor.</p>
+        <p className={`home-message${showThanks ? ' is-thanks' : ''}`}>
+          {showThanks ? 'Thank you. Lead captured successfully.' : 'Welcome'}
+        </p>
       </div>
 
       <Link to='/lead' className='cta-button'>
