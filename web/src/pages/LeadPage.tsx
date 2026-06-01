@@ -47,6 +47,8 @@ type LeadForm = {
 	selectedSuppliers: number[];
 };
 
+type LeadMessageType = 'info' | 'error';
+
 const initialForm: LeadForm = {
 	firstName: '',
 	lastName: '',
@@ -136,6 +138,7 @@ export function LeadPage() {
 	const navigate = useNavigate();
 	const [form, setForm] = useState<LeadForm>(initialForm);
 	const [message, setMessage] = useState('');
+	const [messageType, setMessageType] = useState<LeadMessageType>('info');
 	const [saving, setSaving] = useState(false);
 
 	const selectedCount = useMemo(() => form.selectedSuppliers.length, [form.selectedSuppliers]);
@@ -175,16 +178,19 @@ export function LeadPage() {
 		const notes = form.notes.trim();
 
 		if (!firstName || !email) {
+			setMessageType('error');
 			setMessage('Enter at least first name and email before saving.');
 			return;
 		}
 
 		if (!isValidEmail(email)) {
+			setMessageType('error');
 			setMessage('Enter a valid email address before saving.');
 			return;
 		}
 
 		setSaving(true);
+		setMessageType('info');
 		setMessage('Saving lead...');
 
 		const interestArea = [
@@ -225,6 +231,7 @@ export function LeadPage() {
 			void syncNow();
 			navigate('/', { state: { saved: true } });
 		} catch (error) {
+			setMessageType('error');
 			setMessage(error instanceof Error ? error.message : 'Could not save lead locally.');
 		} finally {
 			setSaving(false);
@@ -375,7 +382,7 @@ export function LeadPage() {
 				</button>
 			</div>
 
-			{message ? <p className='feedback'>{message}</p> : null}
+			{message ? <p className={`feedback ${messageType}`}>{message}</p> : null}
 		</section>
 	);
 }

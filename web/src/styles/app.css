@@ -281,16 +281,26 @@ body {
 .home-message {
 	text-align: center;
 	margin: 0;
-	padding: 0.2rem 0.5rem;
+	padding: 0.35rem 0.7rem;
 	color: #d7e1ec;
 	font-weight: 600;
 	font-size: 1rem;
 	letter-spacing: 0.01em;
-	transition: color 220ms ease, opacity 220ms ease, transform 220ms ease;
+	border-radius: 10px;
+	transition: color 220ms ease, background-color 220ms ease, border-color 220ms ease, opacity 220ms ease, transform 220ms ease;
+}
+
+
+.home-message.is-welcome {
+	color: #bfccdc;
+	background: rgba(120, 141, 167, 0.12);
+	border: 1px solid rgba(120, 141, 167, 0.25);
 }
 
 .home-message.is-thanks {
-	color: #e9f2fd;
+	color: #a4f3b7;
+	background: rgba(82, 196, 115, 0.16);
+	border: 1px solid rgba(82, 196, 115, 0.45);
 	transform: translateY(-1px);
 }
 
@@ -568,9 +578,30 @@ textarea {
 
 .feedback {
 	margin-top: 0.8rem;
-	color: var(--accent-green);
+	padding: 0.7rem 0.85rem;
+	border-radius: 10px;
+	font-size: 0.9rem;
 	font-weight: 600;
+	border-left: 3px solid;
 	animation: fadeIn 0.4s ease-out;
+}
+
+.feedback.success {
+	background: rgba(126, 220, 151, 0.14);
+	border-color: #7edc97;
+	color: #9ff1b6;
+}
+
+.feedback.error {
+	background: rgba(255, 87, 87, 0.15);
+	border-color: #ff5757;
+	color: #ff9a9a;
+}
+
+.feedback.info {
+	background: rgba(103, 215, 255, 0.14);
+	border-color: #67d7ff;
+	color: #9ce8ff;
 }
 
 @keyframes fadeIn {
@@ -865,7 +896,7 @@ textarea {
 	display: flex;
 	align-items: center;
 	gap: 0.5rem;
-	margin-bottom: 1rem;
+	margin: 0.4rem 0 1rem;
 	padding: 0.6rem 0.85rem;
 	border-radius: 10px;
 	font-size: 0.9rem;
@@ -874,27 +905,27 @@ textarea {
 }
 
 .sync-status-banner.success {
-	background: rgba(157, 178, 201, 0.14);
-	border-color: var(--accent-green);
-	color: var(--accent-green);
+	background: rgba(126, 220, 151, 0.14);
+	border-color: #7edc97;
+	color: #9ff1b6;
 }
 
 .sync-status-banner.failed {
 	background: rgba(255, 87, 87, 0.12);
 	border-color: #ff5757;
-	color: #ff5757;
+	color: #ff9a9a;
 }
 
 .sync-status-banner.pending {
-	background: rgba(255, 193, 7, 0.12);
-	border-color: #ffc107;
-	color: #ffc107;
+	background: rgba(103, 215, 255, 0.14);
+	border-color: #67d7ff;
+	color: #9ce8ff;
 }
 
 .sync-status-banner.syncing {
-	background: rgba(103, 215, 255, 0.12);
+	background: rgba(103, 215, 255, 0.14);
 	border-color: #67d7ff;
-	color: #67d7ff;
+	color: #9ce8ff;
 }
 
 .sync-status-icon {
@@ -1286,7 +1317,7 @@ textarea {
 }
 
 .status-message {
-	margin-bottom: 1rem;
+	margin: 0.4rem 0 1rem;
 	padding: 0.7rem 0.85rem;
 	border-radius: 10px;
 	font-size: 0.9rem;
@@ -1294,16 +1325,26 @@ textarea {
 	border-left: 3px solid;
 }
 
+.status-message + .status-message {
+	margin-top: -0.35rem;
+}
+
 .status-message.success {
-	background: rgba(157, 178, 201, 0.16);
-	border-color: var(--accent-green);
-	color: var(--accent-green);
+	background: rgba(126, 220, 151, 0.14);
+	border-color: #7edc97;
+	color: #9ff1b6;
 }
 
 .status-message.error {
 	background: rgba(255, 87, 87, 0.15);
 	border-color: #ff5757;
-	color: #ff5757;
+	color: #ff9a9a;
+}
+
+.status-message.info {
+	background: rgba(103, 215, 255, 0.14);
+	border-color: #67d7ff;
+	color: #9ce8ff;
 }
 
 

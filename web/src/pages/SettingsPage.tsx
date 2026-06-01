@@ -21,6 +21,8 @@ type IssueLogRow = {
   createdAt: string;
 };
 
+type NoticeType = 'success' | 'error' | 'info';
+
 function csvEscape(value: unknown) {
   const text = String(value ?? '');
   return `"${text.replace(/"/g, '""')}"`;
@@ -148,9 +150,15 @@ export function SettingsPage() {
   const [emailing, setEmailing] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [notice, setNotice] = useState('');
+  const [noticeType, setNoticeType] = useState<NoticeType>('info');
   const [expandedHealth, setExpandedHealth] = useState(false);
   const [issueLog, setIssueLog] = useState<IssueLogRow[]>([]);
   const [issueFilter, setIssueFilter] = useState<'all' | 'failed' | 'disabled'>('all');
+
+  const showNotice = (text: string, type: NoticeType) => {
+    setNotice(text);
+    setNoticeType(type);
+  };
 
   useEffect(() => {
     const saved = localStorage.getItem(EVENT_NAME_KEY);
@@ -210,7 +218,7 @@ export function SettingsPage() {
     // Best-effort push; app should continue even if this fails.
     void api.post('/settings/event-name', { name: nextName }).catch(() => undefined);
 
-    setNotice('Event name saved.');
+    showNotice('Event name saved.', 'success');
     window.setTimeout(() => setSavingEvent(false), 200);
   };
 
@@ -222,13 +230,14 @@ export function SettingsPage() {
         '/leads/email-admin-list',
         { eventName: eventName.trim() || 'Main Event' },
       );
-      setNotice(
+      showNotice(
         result.ok
           ? result.message || `Lead list emailed to admin (${result.count ?? 0} leads).`
           : result.message || 'Could not email lead list due to SMTP configuration.',
+        result.ok ? 'success' : 'error',
       );
     } catch (e) {
-      setNotice(e instanceof Error ? e.message : 'Could not email lead list.');
+      showNotice(e instanceof Error ? e.message : 'Could not email lead list.', 'error');
     } finally {
       setEmailing(false);
     }
@@ -238,7 +247,7 @@ export function SettingsPage() {
     const pin = window.prompt('Enter PIN to clear all leads across devices:');
     if (pin === null) return;
     if (pin.trim() !== '1050') {
-      setNotice('Incorrect PIN. Leads were not deleted.');
+      showNotice('Incorrect PIN. Leads were not deleted.', 'error');
       return;
     }
 
@@ -248,7 +257,7 @@ export function SettingsPage() {
     if (!confirmed) return;
 
     setClearing(true);
-    setNotice('Preparing backup...');
+    showNotice('Preparing backup.', 'info');
 
     try {
       // Best-effort final sync attempt before snapshotting local backup.
@@ -280,13 +289,14 @@ export function SettingsPage() {
       await db.leads.clear();
       applyLocalClearMarker(clearResult.clearedAt || null);
       window.dispatchEvent(new CustomEvent('pb-sync-cycle', { detail: { changed: true } }));
-      setNotice(
+      showNotice(
         localLeads.length
           ? `Backed up and emailed ${localLeads.length} leads, then cleared leads across all devices.`
-          : 'Cleared leads across all devices. There were no local leads to back up on this device.'
+          : 'Cleared leads across all devices. There were no local leads to back up on this device.',
+        'success',
       );
     } catch (e) {
-      setNotice(`Local leads were not deleted: ${e instanceof Error ? e.message : 'Email backup failed.'}`);
+      showNotice(`Local leads were not deleted: ${e instanceof Error ? e.message : 'Email backup failed.'}`, 'error');
     } finally {
       setClearing(false);
     }
@@ -311,13 +321,13 @@ export function SettingsPage() {
 
         <div className='actions-row settings-actions'>
           <button type='button' className='secondary-button' onClick={saveEventName} disabled={savingEvent}>
-            {savingEvent ? 'Saving…' : 'Save Event Name'}
+            {savingEvent ? 'Saving...' : 'Save Event Name'}
           </button>
           <button type='button' className='secondary-button' onClick={handleEmailList} disabled={emailing}>
-            {emailing ? 'Emailing…' : 'Export / Email Lead List'}
+            {emailing ? 'Emailing...' : 'Export / Email Lead List'}
           </button>
           <button type='button' className='danger-button' onClick={clearLeadList} disabled={clearing}>
-            {clearing ? 'Clearing…' : 'Backup and Clear All Leads'}
+            {clearing ? 'Clearing...' : 'Backup and Clear All Leads'}
           </button>
         </div>
 
@@ -397,7 +407,7 @@ export function SettingsPage() {
         </section>
       </div>
 
-      {notice ? <p className='feedback'>{notice}</p> : null}
+      {notice ? <p className={`feedback ${noticeType}`}>{notice}</p> : null}
     </section>
   );
 }

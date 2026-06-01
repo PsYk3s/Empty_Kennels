@@ -45,7 +45,7 @@ export function SyncPage() {
 
       {!online ? (
         <div className='status-message error'>
-          Offline \u2014 leads saved locally, will sync when back online.
+          Offline - leads are saved locally and will sync when back online.
         </div>
       ) : null}
 
@@ -62,9 +62,8 @@ export function SyncPage() {
         </div>
       ) : (
         <div className='queue-empty'>
-          <p className='queue-empty-icon'>\u25cb</p>
           <p>No leads yet</p>
-          <p className='queue-empty-sub'>Captured leads will appear here</p>
+          <p className='queue-empty-sub'>Captured leads will appear here.</p>
         </div>
       )}
 
@@ -75,7 +74,7 @@ export function SyncPage() {
           onClick={handleSync}
           disabled={syncing}
         >
-          {syncing ? 'Syncing\u2026' : 'Sync now'}
+          {syncing ? 'Syncing...' : 'Sync now'}
         </button>
       </div>
     </section>

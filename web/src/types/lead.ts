@@ -56,9 +56,9 @@ export function statusReason(
 }
 
 export function formatTs(value: string | undefined): string {
-  if (!value) return '—';
+  if (!value) return 'N/A';
   const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString();
+  return Number.isNaN(d.getTime()) ? 'N/A' : d.toLocaleString();
 }
 
 export function maskEmail(value: string | undefined): string {

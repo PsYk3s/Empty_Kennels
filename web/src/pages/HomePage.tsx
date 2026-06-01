@@ -28,7 +28,7 @@ export function HomePage() {
       </div>
 
       <div className='thanks-slot' aria-live='polite'>
-        <p className={`home-message${showThanks ? ' is-thanks' : ''}`}>
+        <p className={`home-message ${showThanks ? 'is-thanks' : 'is-welcome'}`}>
           {showThanks ? 'Thank you. Lead captured successfully.' : 'Welcome'}
         </p>
       </div>
