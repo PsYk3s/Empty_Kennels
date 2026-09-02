@@ -52,54 +52,69 @@ export function InstallPrompt() {
     return null;
   }
 
-  if (!canInstall && !isIOS) {
-    return null;
-  }
-
+  // Blocks the in-browser site entirely; only installing the app grants access.
   return (
     <div
       style={{
         position: 'fixed',
-        left: '50%',
-        bottom: '1rem',
-        transform: 'translateX(-50%)',
-        width: 'min(520px, calc(100vw - 1.5rem))',
-        background: 'rgba(11, 16, 24, 0.92)',
-        border: '1px solid rgba(157, 178, 201, 0.22)',
-        borderRadius: '16px',
-        padding: '0.95rem 1rem',
+        inset: 0,
+        background: 'linear-gradient(135deg, #0b1018 0%, #16202f 100%)',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: '2rem',
         zIndex: 10000,
         color: '#dfe6ef',
-        textAlign: 'left',
-        backdropFilter: 'blur(14px)',
+        textAlign: 'center',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
-        <div style={{ minWidth: 0 }}>
-          <p style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600 }}>Install this app</p>
-          <p style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: '#9fadc0' }}>
-            {isIOS ? 'Use Add to Home Screen.' : 'Install for offline capture and faster access.'}
-          </p>
-        </div>
+      <div style={{ maxWidth: '480px' }}>
+        <h1 style={{ fontSize: '1.8rem', marginBottom: '1rem' }}>Install Required</h1>
 
-        {canInstall && (
-          <button
-            onClick={handleInstallClick}
-            style={{
-              background: '#9db2c9',
-              color: '#0b1018',
-              border: 'none',
-              padding: '0.75rem 1rem',
-              fontSize: '0.95rem',
-              fontWeight: '700',
-              borderRadius: '10px',
-              cursor: 'pointer',
-              flexShrink: 0,
-            }}
-          >
-            Install
-          </button>
-        )}
+        <p style={{ fontSize: '1rem', marginBottom: '0.5rem', opacity: 0.9 }}>
+          This app is only available as an installed app.
+        </p>
+
+        <p style={{ fontSize: '0.9rem', marginBottom: '2rem', opacity: 0.7 }}>
+          Install it on your device to get offline lead capture, automatic syncing, and full access.
+        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {canInstall && (
+            <button
+              onClick={handleInstallClick}
+              style={{
+                background: '#9db2c9',
+                color: '#0b1018',
+                border: 'none',
+                padding: '1rem 1.5rem',
+                fontSize: '1.05rem',
+                fontWeight: '700',
+                borderRadius: '12px',
+                cursor: 'pointer',
+              }}
+            >
+              Install App
+            </button>
+          )}
+
+          {isIOS && (
+            <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.08)', borderRadius: '10px' }}>
+              <p style={{ margin: 0, fontSize: '0.85rem' }}>
+                <strong>iPhone/iPad:</strong> Tap the Share button, then "Add to Home Screen".
+              </p>
+            </div>
+          )}
+
+          {!canInstall && !isIOS && (
+            <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.08)', borderRadius: '10px' }}>
+              <p style={{ margin: 0, fontSize: '0.85rem' }}>
+                <strong>Chrome/Edge:</strong> use the browser menu and select "Install app".
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
