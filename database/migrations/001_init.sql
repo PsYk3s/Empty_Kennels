@@ -7,3 +7,4 @@ CREATE TABLE IF NOT EXISTS lead_suppliers (lead_id INTEGER REFERENCES leads(id),
 CREATE TABLE IF NOT EXISTS sync_logs (id SERIAL PRIMARY KEY, lead_uuid TEXT, status TEXT, attempt INTEGER DEFAULT 1, error_message TEXT, created_at TIMESTAMP DEFAULT NOW());
 CREATE TABLE IF NOT EXISTS email_logs (id SERIAL PRIMARY KEY, lead_uuid TEXT UNIQUE, recipient TEXT, cc TEXT, sent_at TIMESTAMP DEFAULT NOW());
 CREATE TABLE IF NOT EXISTS brevo_logs (id SERIAL PRIMARY KEY, lead_uuid TEXT UNIQUE, status TEXT, detail TEXT, created_at TIMESTAMP DEFAULT NOW());
+CREATE INDEX IF NOT EXISTS idx_leads_sync_cursor ON leads (COALESCE(updated_at, created_at), uuid);

@@ -377,6 +377,8 @@ async function ensureSchema() {
         brevo_sync_status TEXT
       );
 
+      CREATE INDEX IF NOT EXISTS idx_leads_sync_cursor ON leads (COALESCE(updated_at, created_at), uuid);
+
       CREATE TABLE IF NOT EXISTS app_settings (
         key TEXT PRIMARY KEY,
         value TEXT NOT NULL,
