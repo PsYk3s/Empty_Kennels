@@ -1,19 +1,57 @@
-import nodemailer from 'nodemailer';
 import { APP_CONFIG } from '../config.js';
 
 const ADMIN_EMAIL = APP_CONFIG.adminEmail;
+const SENDER_EMAIL = APP_CONFIG.smtp.from || ADMIN_EMAIL;
 
-const transporter = nodemailer.createTransport({
-  host: APP_CONFIG.smtp.host,
-  port: APP_CONFIG.smtp.port,
-  secure: APP_CONFIG.smtp.secure,
-  auth: APP_CONFIG.smtp.user ? { user: APP_CONFIG.smtp.user, pass: APP_CONFIG.smtp.pass } : undefined
-});
+export function smtpErrorMessage(error) {
+  const text = error instanceof Error ? error.message : String(error || 'Email request failed');
+  if (/401|403|api[- ]?key|unauthor/i.test(text)) {
+    return 'Brevo authentication failed. Check that BREVO_API_KEY is a valid API v3 key with transactional email permissions.';
+  }
+  if (/sender|from.*not.*valid|not.*verified/i.test(text)) {
+    return `Brevo rejected the sender address. Verify ${SENDER_EMAIL} as a sender/domain in Brevo (Senders, Domains & Dedicated IPs).`;
+  }
+  return `Email error: ${text}`;
+}
+
+async function sendBrevoEmail({ subject, text, attachments }) {
+  const apiKey = String(APP_CONFIG.brevo.apiKey || '').trim();
+  if (!apiKey) {
+    throw new Error('BREVO_API_KEY is not configured; cannot send email.');
+  }
+
+  const payload = {
+    sender: { email: SENDER_EMAIL },
+    to: [{ email: ADMIN_EMAIL }],
+    subject,
+    textContent: text
+  };
+
+  if (attachments && attachments.length) {
+    payload.attachment = attachments.map((a) => ({
+      name: a.filename,
+      content: Buffer.from(String(a.content), 'utf8').toString('base64')
+    }));
+  }
+
+  const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      accept: 'application/json',
+      'content-type': 'application/json',
+      'api-key': apiKey
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const details = await response.text().catch(() => 'Brevo email request failed');
+    throw new Error(details || `HTTP ${response.status}`);
+  }
+}
 
 export async function sendLeadEmail({ lead, eventName }) {
-  await transporter.sendMail({
-    from: APP_CONFIG.smtp.from || APP_CONFIG.smtp.user || ADMIN_EMAIL,
-    to: ADMIN_EMAIL,
+  await sendBrevoEmail({
     subject: `New Lead: ${lead.first_name} ${lead.last_name}`,
     text: `Event: ${eventName}\nName: ${lead.first_name} ${lead.last_name}\nEmail: ${lead.email}\nPhone: ${lead.phone || ''}\nCompany: ${lead.company || ''}\nInterest: ${lead.interest_area || ''}\nNotes: ${lead.notes || ''}`
   });
@@ -51,16 +89,13 @@ export async function sendFullLeadListEmail({ leads }) {
 
   const body = `Lead Export (${new Date().toISOString()})\n\nTotal Leads: ${leads.length}\nAttached: lead-export.csv`;
 
-  await transporter.sendMail({
-    from: APP_CONFIG.smtp.from || APP_CONFIG.smtp.user || ADMIN_EMAIL,
-    to: ADMIN_EMAIL,
+  await sendBrevoEmail({
     subject: `Lead List Export (${leads.length})`,
     text: body,
     attachments: [
       {
         filename: `lead-export-${new Date().toISOString().slice(0, 10)}.csv`,
-        content: csv,
-        contentType: 'text/csv; charset=utf-8'
+        content: csv
       }
     ]
   });
@@ -80,21 +115,31 @@ export async function sendCsvBackupEmail({ csv, fileName, count, eventName, devi
     'Attached: local lead backup CSV'
   ];
 
-  await transporter.sendMail({
-    from: APP_CONFIG.smtp.from || APP_CONFIG.smtp.user || ADMIN_EMAIL,
-    to: ADMIN_EMAIL,
+  await sendBrevoEmail({
     subject: `Local Lead Backup (${Number.isFinite(count) ? count : 'Unknown'})`,
     text: bodyLines.join('\n'),
     attachments: [
       {
         filename: safeName,
-        content: csv,
-        contentType: 'text/csv; charset=utf-8'
+        content: csv
       }
     ]
   });
 }
 
 export async function verifySmtpConnection() {
-  await transporter.verify();
+  const apiKey = String(APP_CONFIG.brevo.apiKey || '').trim();
+  if (!apiKey) {
+    throw new Error('BREVO_API_KEY is not configured.');
+  }
+
+  const response = await fetch('https://api.brevo.com/v3/account', {
+    headers: { accept: 'application/json', 'api-key': apiKey }
+  });
+
+  if (!response.ok) {
+    const details = await response.text().catch(() => 'Brevo account check failed');
+    throw new Error(details || `HTTP ${response.status}`);
+  }
 }
+

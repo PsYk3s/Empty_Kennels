@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { pool } from '../database/db.js';
-import { sendCsvBackupEmail, sendFullLeadListEmail, sendLeadEmail } from '../integrations/emailService.js';
+import { sendCsvBackupEmail, sendFullLeadListEmail, sendLeadEmail, smtpErrorMessage } from '../integrations/emailService.js';
 import { syncLeadToBrevo } from '../integrations/brevoService.js';
 import { APP_CONFIG } from '../config.js';
 
@@ -83,7 +83,7 @@ export async function batchCreateLeads(req, res, next) {
           }
         } catch (emailSendError) {
           emailSentStatus = 'failed';
-          emailError = emailSendError instanceof Error ? emailSendError.message : 'Email send failed';
+          emailError = smtpErrorMessage(emailSendError);
         }
 
         try {

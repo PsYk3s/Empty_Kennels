@@ -271,18 +271,9 @@ async function pullRemoteChanges() {
 	let changedCount = 0;
 
 	if (hasNewClearMarker(remoteClearMarker, localClearMarker)) {
-		// Preserve leads that never made it to the server (e.g. captured offline) instead of wiping them.
-		const unsynced = ((await db.leads.all()) as LocalLead[]).filter((lead) =>
-			['pending', 'syncing', 'failed'].includes(lead.syncStatus || '')
-		);
+		// "Clear All Leads" is a deliberate, PIN-locked full reset between shows -
+		// every device wipes its entire local queue unconditionally, no exceptions.
 		await db.leads.clear();
-		for (const lead of unsynced) {
-			await db.leads.put({
-				...lead,
-				syncStatus: 'pending',
-				lastSyncedAt: null
-			});
-		}
 		setSyncCursor(null);
 		setLocalClearMarker(remoteClearMarker as string);
 		changedCount += 1;

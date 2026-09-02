@@ -74,7 +74,7 @@ Production-ready monorepo containing:
 
 ## Configuration
 - Vercel API runtime config is read from environment variables in `api/[...path].js`.
-- For local API testing, create a root `.env` file with `DATABASE_URL`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_LOGIN`, `SMTP_KEY`, and `SMTP_FROM`.
+- For local API testing, create a root `.env` file with `DATABASE_URL`, `SMTP_FROM`, `BREVO_API_KEY`, and `BREVO_LIST_ID`.
 - In Vercel production, set the same keys in Project Settings -> Environment Variables.
 
 ## Sync Behavior

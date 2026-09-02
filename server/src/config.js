@@ -11,11 +11,6 @@ export const APP_CONFIG = {
   databaseUrl: process.env.DATABASE_URL || '',
   adminEmail: process.env.ADMIN_NOTIFICATION_EMAIL || 'warrenb@pienaarbros.co.za',
   smtp: {
-    host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
-    port: Number(process.env.SMTP_PORT || 587),
-    secure: parseBoolean(process.env.SMTP_SECURE, false),
-    user: process.env.SMTP_LOGIN || '',
-    pass: process.env.SMTP_KEY || '',
     from: process.env.SMTP_FROM || process.env.ADMIN_NOTIFICATION_EMAIL || 'warrenb@pienaarbros.co.za'
   },
   brevo: {

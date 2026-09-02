@@ -1,5 +1,4 @@
 const { Pool } = require('pg');
-const nodemailer = require('nodemailer');
 
 try {
   require('dotenv').config({ path: '.env' });
@@ -11,11 +10,6 @@ const CONFIG = {
   databaseUrl: process.env.DATABASE_URL || '',
   adminEmail: 'warrenb@pienaarbros.co.za',
   smtp: {
-    host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
-    port: Number(process.env.SMTP_PORT || 587),
-    secure: false,
-    user: process.env.SMTP_LOGIN || '',
-    pass: process.env.SMTP_KEY || '',
     from: process.env.SMTP_FROM || 'warrenb@pienaarbros.co.za'
   },
   brevo: {
@@ -27,13 +21,6 @@ const CONFIG = {
 
 const pool = new Pool({ connectionString: CONFIG.databaseUrl });
 let schemaReadyPromise = null;
-
-const transporter = nodemailer.createTransport({
-  host: CONFIG.smtp.host,
-  port: CONFIG.smtp.port,
-  secure: CONFIG.smtp.secure,
-  auth: CONFIG.smtp.user ? { user: CONFIG.smtp.user, pass: CONFIG.smtp.pass } : undefined
-});
 
 function json(res, status, payload) {
   res.status(status).setHeader('Content-Type', 'application/json');
@@ -53,11 +40,14 @@ function parseBody(req) {
 }
 
 function smtpErrorMessage(error) {
-  const text = error instanceof Error ? error.message : String(error || 'SMTP request failed');
-  if (/auth|login|535|invalid/i.test(text)) {
-    return 'SMTP authentication failed. Check SMTP_LOGIN and SMTP_KEY in your environment variables.';
+  const text = error instanceof Error ? error.message : String(error || 'Email request failed');
+  if (/401|403|api[- ]?key|unauthor/i.test(text)) {
+    return 'Brevo authentication failed. Check that BREVO_API_KEY is a valid API v3 key with transactional email permissions.';
   }
-  return `SMTP error: ${text}`;
+  if (/sender|from.*not.*valid|not.*verified/i.test(text)) {
+    return `Brevo rejected the sender address. Verify ${CONFIG.smtp.from} as a sender/domain in Brevo (Senders, Domains & Dedicated IPs).`;
+  }
+  return `Email error: ${text}`;
 }
 
 function brevoErrorMessage(error) {
@@ -121,10 +111,43 @@ async function syncLeadToBrevoList(lead) {
   throw new Error(`${firstError || `HTTP ${firstAttempt.status}`}. Verify BREVO_API_KEY, BREVO_LIST_ID, and contacts permissions.`);
 }
 
+async function sendBrevoEmail({ subject, text, attachments }) {
+  if (!CONFIG.brevo.apiKey) {
+    throw new Error('BREVO_API_KEY is not configured; cannot send email.');
+  }
+
+  const payload = {
+    sender: { email: CONFIG.smtp.from || CONFIG.adminEmail },
+    to: [{ email: CONFIG.adminEmail }],
+    subject,
+    textContent: text
+  };
+
+  if (attachments && attachments.length) {
+    payload.attachment = attachments.map((a) => ({
+      name: a.filename,
+      content: Buffer.from(String(a.content), 'utf8').toString('base64')
+    }));
+  }
+
+  const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      accept: 'application/json',
+      'content-type': 'application/json',
+      'api-key': CONFIG.brevo.apiKey
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const details = await response.text().catch(() => 'Brevo email request failed');
+    throw new Error(details || `HTTP ${response.status}`);
+  }
+}
+
 async function sendLeadEmail({ lead, eventName }) {
-  await transporter.sendMail({
-    from: CONFIG.smtp.from || CONFIG.smtp.user || CONFIG.adminEmail,
-    to: CONFIG.adminEmail,
+  await sendBrevoEmail({
     subject: `New Lead: ${lead.first_name} ${lead.last_name}`,
     text: `Event: ${eventName}\nName: ${lead.first_name} ${lead.last_name}\nEmail: ${lead.email}\nPhone: ${lead.phone || ''}\nCompany: ${lead.company || ''}\nInterest: ${lead.interest_area || ''}\nNotes: ${lead.notes || ''}`
   });
@@ -163,16 +186,13 @@ async function sendFullLeadListEmail(leads) {
   const csv = `\ufeffsep=,\r\n${csvBody}`;
 
   const body = `Lead Export (${new Date().toISOString()})\n\nTotal Leads: ${leads.length}\nAttached: lead-export.csv`;
-  await transporter.sendMail({
-    from: CONFIG.smtp.from || CONFIG.smtp.user || CONFIG.adminEmail,
-    to: CONFIG.adminEmail,
+  await sendBrevoEmail({
     subject: `Lead List Export (${leads.length})`,
     text: body,
     attachments: [
       {
         filename: `lead-export-${new Date().toISOString().slice(0, 10)}.csv`,
-        content: csv,
-        contentType: 'text/csv; charset=utf-8'
+        content: csv
       }
     ]
   });
@@ -192,16 +212,13 @@ async function sendCsvBackupEmail({ csv, fileName, count, eventName, deviceId })
     'Attached: local lead backup CSV'
   ];
 
-  await transporter.sendMail({
-    from: CONFIG.smtp.from || CONFIG.smtp.user || CONFIG.adminEmail,
-    to: CONFIG.adminEmail,
+  await sendBrevoEmail({
     subject: `Local Lead Backup (${Number.isFinite(count) ? count : 'Unknown'})`,
     text: bodyLines.join('\n'),
     attachments: [
       {
         filename: safeName,
-        content: csv,
-        contentType: 'text/csv; charset=utf-8'
+        content: csv
       }
     ]
   });
@@ -446,8 +463,17 @@ module.exports = async function handler(req, res) {
 
     if ((req.method === 'GET' || req.method === 'POST') && route === '/health/smtp') {
       try {
-        await transporter.verify();
-        return json(res, 200, { ok: true, message: 'SMTP credentials are valid' });
+        if (!CONFIG.brevo.apiKey) {
+          throw new Error('BREVO_API_KEY is not configured.');
+        }
+        const accountResp = await fetch('https://api.brevo.com/v3/account', {
+          headers: { accept: 'application/json', 'api-key': CONFIG.brevo.apiKey }
+        });
+        if (!accountResp.ok) {
+          const details = await accountResp.text().catch(() => 'Brevo account check failed');
+          throw new Error(details || `HTTP ${accountResp.status}`);
+        }
+        return json(res, 200, { ok: true, message: 'Brevo API key is valid for sending email.' });
       } catch (smtpError) {
         return json(res, 200, { ok: false, message: smtpErrorMessage(smtpError) });
       }
@@ -683,7 +709,7 @@ module.exports = async function handler(req, res) {
             }
           } catch (emailSendError) {
             emailSentStatus = 'failed';
-            emailError = emailSendError instanceof Error ? emailSendError.message : 'Email send failed';
+            emailError = smtpErrorMessage(emailSendError);
           }
 
           try {
