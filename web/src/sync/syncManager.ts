@@ -271,24 +271,46 @@ async function pullRemoteChanges() {
 	let changedCount = 0;
 
 	if (hasNewClearMarker(remoteClearMarker, localClearMarker)) {
+		// Preserve leads that never made it to the server (e.g. captured offline) instead of wiping them.
+		const unsynced = ((await db.leads.all()) as LocalLead[]).filter((lead) =>
+			['pending', 'syncing', 'failed'].includes(lead.syncStatus || '')
+		);
 		await db.leads.clear();
+		for (const lead of unsynced) {
+			await db.leads.put({
+				...lead,
+				syncStatus: 'pending',
+				lastSyncedAt: null
+			});
+		}
 		setSyncCursor(null);
 		setLocalClearMarker(remoteClearMarker as string);
 		changedCount += 1;
 	}
 
-	const manifestResp = await api.get<ManifestResponse>('/leads/manifest').catch(() => ({ uuids: [] }));
-	const remoteUuidSet = new Set((manifestResp.uuids || []).map((uuid) => String(uuid)));
-	const localLeads = (await db.leads.all()) as LocalLead[];
+	// A failed manifest fetch must never be treated as "the server has zero leads" - that would
+	// wipe every already-synced local lead. Only run the manifest diff when the fetch truly succeeded.
+	let manifestUuids: string[] | null = null;
+	try {
+		const manifestResp = await api.get<ManifestResponse>('/leads/manifest');
+		manifestUuids = (manifestResp.uuids || []).map((uuid) => String(uuid));
+	} catch {
+		manifestUuids = null;
+	}
 
-	for (const local of localLeads) {
-		const existsRemotely = remoteUuidSet.has(String(local.uuid || ''));
-		const syncedToServer = Boolean(local.lastSyncedAt) || local.syncStatus === 'synced';
-		const hasLocalPendingWrite = local.syncStatus === 'pending' || local.syncStatus === 'syncing';
+	if (manifestUuids) {
+		const remoteUuidSet = new Set(manifestUuids);
+		const localLeads = (await db.leads.all()) as LocalLead[];
 
-		if (!existsRemotely && syncedToServer && !hasLocalPendingWrite) {
-			await db.leads.remove(String(local.uuid));
-			changedCount += 1;
+		for (const local of localLeads) {
+			const existsRemotely = remoteUuidSet.has(String(local.uuid || ''));
+			const syncedToServer = Boolean(local.lastSyncedAt) || local.syncStatus === 'synced';
+			const hasLocalPendingWrite = ['pending', 'syncing', 'failed'].includes(local.syncStatus || '');
+
+			if (!existsRemotely && syncedToServer && !hasLocalPendingWrite) {
+				await db.leads.remove(String(local.uuid));
+				changedCount += 1;
+			}
 		}
 	}
 

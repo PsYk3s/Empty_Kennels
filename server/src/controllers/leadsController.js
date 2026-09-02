@@ -7,9 +7,28 @@ import { APP_CONFIG } from '../config.js';
 const leadSchema = z.object({ uuid: z.string(), firstName: z.string(), lastName: z.string(), company: z.string().optional(), email: z.string().email(), phone: z.string().optional(), interestArea: z.string().optional(), notes: z.string().optional(), eventId: z.number(), selectedSuppliers: z.array(z.number()).default([]), createdAt: z.string() });
 
 const syncQuerySchema = z.object({
-  since: z.string().datetime().optional(),
+  since: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(500).optional()
 });
+
+// Compound cursor (timestamp + uuid tie-break) so leads sharing a timestamp are never skipped.
+function buildChangesCursor(row) {
+  const ts = new Date(row.updated_at || row.created_at).toISOString();
+  return `${ts}::${row.uuid}`;
+}
+
+function parseChangesCursor(value) {
+  const text = String(value || '').trim();
+  if (!text) return null;
+
+  const separatorIndex = text.lastIndexOf('::');
+  const tsPart = separatorIndex >= 0 ? text.slice(0, separatorIndex) : text;
+  const uuidPart = separatorIndex >= 0 ? text.slice(separatorIndex + 2) : '';
+  const date = new Date(tsPart);
+  if (Number.isNaN(date.getTime())) return null;
+
+  return { ts: date.toISOString(), uuid: uuidPart };
+}
 
 async function ensureSettingsTable() {
   await pool.query(`
@@ -195,11 +214,21 @@ export async function getClearMarker(req, res, next) {
   }
 }
 
+export async function getLeadManifest(req, res, next) {
+  try {
+    const rows = (await pool.query('SELECT uuid FROM leads ORDER BY uuid ASC')).rows;
+    res.json({ uuids: rows.map((row) => row.uuid) });
+  } catch (e) {
+    next(e);
+  }
+}
+
 export async function getLeadChanges(req, res, next) {
   try {
     const parsed = syncQuerySchema.parse(req.query);
     const since = parsed.since;
     const limit = parsed.limit || 200;
+    const cursor = parseChangesCursor(since);
 
     const rows = (
       await pool.query(
@@ -207,15 +236,16 @@ export async function getLeadChanges(req, res, next) {
                 event_id, created_at, updated_at, sync_status, email_sent_status,
                 brevo_sync_status, last_synced_at
          FROM leads
-         WHERE ($1::timestamptz IS NULL OR COALESCE(updated_at, created_at) > $1::timestamptz)
-         ORDER BY COALESCE(updated_at, created_at) ASC
-         LIMIT $2`,
-        [since || null, limit]
+         WHERE $1::timestamptz IS NULL
+            OR (COALESCE(updated_at, created_at), uuid) > ($1::timestamptz, $2)
+         ORDER BY COALESCE(updated_at, created_at) ASC, uuid ASC
+         LIMIT $3`,
+        [cursor?.ts || null, cursor?.uuid || '', limit]
       )
     ).rows;
 
     const nextCursor = rows.length
-      ? new Date(rows[rows.length - 1].updated_at || rows[rows.length - 1].created_at).toISOString()
+      ? buildChangesCursor(rows[rows.length - 1])
       : since || null;
 
     res.json({

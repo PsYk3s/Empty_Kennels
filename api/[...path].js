@@ -273,6 +273,25 @@ function parseIsoTimestamp(value, fallback = new Date().toISOString()) {
   return date.toISOString();
 }
 
+// Compound cursor (timestamp + uuid tie-break) so leads sharing a timestamp are never skipped.
+function buildChangesCursor(row) {
+  const ts = new Date(row.updated_at || row.created_at).toISOString();
+  return `${ts}::${row.uuid}`;
+}
+
+function parseChangesCursor(value) {
+  const text = String(value || '').trim();
+  if (!text) return null;
+
+  const separatorIndex = text.lastIndexOf('::');
+  const tsPart = separatorIndex >= 0 ? text.slice(0, separatorIndex) : text;
+  const uuidPart = separatorIndex >= 0 ? text.slice(separatorIndex + 2) : '';
+  const date = new Date(tsPart);
+  if (Number.isNaN(date.getTime())) return null;
+
+  return { ts: date.toISOString(), uuid: uuidPart };
+}
+
 function normalizeEmail(value) {
   return String(value || '').trim().toLowerCase();
 }
@@ -490,6 +509,7 @@ module.exports = async function handler(req, res) {
       const since = typeof req.query.since === 'string' ? req.query.since : null;
       const parsedLimit = Number(req.query.limit || 200);
       const limit = Number.isFinite(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 500) : 200;
+      const cursor = parseChangesCursor(since);
 
       const rows = (
         await pool.query(
@@ -497,15 +517,16 @@ module.exports = async function handler(req, res) {
                   event_id, created_at, updated_at, sync_status, email_sent_status,
                   brevo_sync_status, last_synced_at
            FROM leads
-           WHERE ($1::timestamptz IS NULL OR COALESCE(updated_at, created_at) > $1::timestamptz)
-           ORDER BY COALESCE(updated_at, created_at) ASC
-           LIMIT $2`,
-          [since || null, limit]
+           WHERE $1::timestamptz IS NULL
+              OR (COALESCE(updated_at, created_at), uuid) > ($1::timestamptz, $2)
+           ORDER BY COALESCE(updated_at, created_at) ASC, uuid ASC
+           LIMIT $3`,
+          [cursor?.ts || null, cursor?.uuid || '', limit]
         )
       ).rows;
 
       const nextCursor = rows.length
-        ? new Date(rows[rows.length - 1].updated_at || rows[rows.length - 1].created_at).toISOString()
+        ? buildChangesCursor(rows[rows.length - 1])
         : since;
 
       return json(res, 200, { leads: rows.map(mapRowToLead), nextCursor });
